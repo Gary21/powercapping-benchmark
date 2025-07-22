@@ -27,13 +27,25 @@ class Client
         var experimentConsumer = new AsyncEventingBasicConsumer(channel);
         experimentConsumer.ReceivedAsync += async (model, ea) =>
         {
-            var experimentId = Encoding.UTF8.GetString(ea.Body.ToArray());
-            Console.WriteLine($"Otrzymano eksperyment ID: {experimentId}");
-
-            for (int i = 0; i < 10; i++)
+            var message = Encoding.UTF8.GetString(ea.Body.ToArray());
+            var parts = message.Split(';');
+            if (parts.Length != 2)
             {
-                var result = await PlaySingleGame(lc0Communaction);
-                var resultMsg = $"{experimentId};{result}";
+                Console.WriteLine("Nieprawidłowy format wiadomości eksperymentu.");
+                return;
+            }
+            var engine = parts[0];
+            var powerCap = int.Parse(parts[1]);
+            var numberOfGames = int.Parse(parts[2]);
+            
+            Console.WriteLine($"Otrzymano eksperyment: {engine}, powerCap: {powerCap}");
+
+            for (int i = 0; i < 30; i++)
+            {
+                var result = engine == "stockfish"
+                    ? await PlaySingleGame(stockfishCommunaction)
+                    : await PlaySingleGame(lc0Communaction);
+                var resultMsg = $"{engine};{powerCap};{result}";
                 var resultBody = Encoding.UTF8.GetBytes(resultMsg);
                 await channel.BasicPublishAsync(exchange: "", routingKey: ResultQueue, body: resultBody);
                 Console.WriteLine($"Wysłano wynik partii: {resultMsg}");

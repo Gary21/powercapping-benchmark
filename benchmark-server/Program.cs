@@ -4,52 +4,68 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
 namespace benchmark_server;
-
+// https://github.com/kunzmi/managedCuda 
+// MEGA WAZNE REPO
 class Server
 {
-    private static readonly ConcurrentDictionary<string, (int White, int Black, int Draws)> Stats = new();
     private const string InitQueue = "init_queue";
     private const string ResultQueue = "result_queue";
 
     static async Task Main()
     {
+        var database = new DatabaseHandler();
+        
         var factory = new ConnectionFactory() { HostName = "localhost" };
         await using var connection = await factory.CreateConnectionAsync();
         await using var channel = await connection.CreateChannelAsync();
 
         await channel.QueueDeclareAsync(queue: InitQueue, durable: false, exclusive: false, autoDelete: false, arguments: null);
         await channel.QueueDeclareAsync(queue: ResultQueue, durable: false, exclusive: false, autoDelete: false, arguments: null);
-
-        for (int i = 0; i < 5; i++)
-        {
-            string experimentId = Guid.NewGuid().ToString();
-            var body = Encoding.UTF8.GetBytes(experimentId);
-            await channel.BasicPublishAsync(exchange: "", routingKey: InitQueue, body: body);
-            Console.WriteLine($"Wysłano eksperyment ID: {experimentId}");
-            Stats.TryAdd(experimentId, (0, 0, 0));
-        }
+        
+        ExperimentResult newResult = new ExperimentResult("lc0", 1000);
+        var message = $"{newResult.Engine};{newResult.PowerCap};50";
+        var body = Encoding.UTF8.GetBytes(message);
+        await channel.BasicPublishAsync(exchange: "", routingKey: InitQueue, body: body);
+        Console.WriteLine($"Wysłano eksperyment: {message}");
+        database.UpsertResult(newResult);
+        
+        ExperimentResult newResult1 = new ExperimentResult("stockfish", 1000);
+        var message1 = $"{newResult1.Engine};{newResult1.PowerCap};50";
+        var body1 = Encoding.UTF8.GetBytes(message1);
+        await channel.BasicPublishAsync(exchange: "", routingKey: InitQueue, body: body1);
+        Console.WriteLine($"Wysłano eksperyment: {message1}");
+        database.UpsertResult(newResult1);
         
         var consumer = new AsyncEventingBasicConsumer(channel);
         consumer.ReceivedAsync += (model, ea) =>
         {
             var message = Encoding.UTF8.GetString(ea.Body.ToArray());
             var parts = message.Split(';');
-            if (parts.Length == 2)
+            if (parts.Length == 3)
             {
-                var id = parts[0];
-                var result = parts[1];
-                if (Stats.TryGetValue(id, out var old))
+                var engine = parts[0];
+                var powercap = parts[1];
+                var matchResult = parts[2];
+                switch (matchResult)
                 {
-                    var updated = result switch
-                    {
-                        "white" => (old.White + 1, old.Black, old.Draws),
-                        "black" => (old.White, old.Black + 1, old.Draws),
-                        "draw" => (old.White, old.Black, old.Draws + 1),
-                        _ => old
-                    };
-                    Stats[id] = updated;
+                    case "white":
+                        database.UpsertResult(new ExperimentResult(engine, int.Parse(powercap), white: 1));
+                        break;
+                    case "black":
+                        database.UpsertResult(new ExperimentResult(engine, int.Parse(powercap), black: 1));
+                        break;
+                    case "draw":
+                        database.UpsertResult(new ExperimentResult(engine, int.Parse(powercap), draws: 1));
+                        break;
                 }
-                Console.WriteLine($"ID: {id} | Biały: {Stats[id].White}, Czarny: {Stats[id].Black}, Remisy: {Stats[id].Draws}");
+
+                foreach (var result in database.GetAllResults())
+                {
+                    Console.WriteLine(
+                        $"{result.Engine};{result.PowerCap};{result.White};{result.Black};{result.Draws}");
+
+                }
+                Console.WriteLine(database.GetAllResults());
             }
             return Task.CompletedTask;
         };
