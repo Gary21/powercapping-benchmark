@@ -1,56 +1,100 @@
-﻿using System;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
+using Chess;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+
+namespace benchmark_client;
 
 class Client
 {
+    private const string InitQueue = "init_queue";
+    private const string ResultQueue = "result_queue";
+    private const string EnginePathStockfish = "engines/stockfish/stockfish-windows.exe";
+    private const string EnginePathLc0 = "engines/lc0/lc0.exe";
     static async Task Main()
     {
-        // Ustawienia serwera, z którym się łączymy
-        string serverIp = "127.0.0.1";
-        int port = 8888;
+        var stockfishCommunaction = new EngineCommunication(EnginePathStockfish);
+        var lc0Communaction = new EngineCommunication(EnginePathLc0);
         
-        try
+        var factory = new ConnectionFactory() { HostName = "localhost" };
+        await using var connection = await factory.CreateConnectionAsync();
+        await using var channel = await connection.CreateChannelAsync();
+
+        await channel.QueueDeclareAsync(queue: InitQueue, durable: false, exclusive: false, autoDelete: false, arguments: null);
+        await channel.QueueDeclareAsync(queue: ResultQueue, durable: false, exclusive: false, autoDelete: false, arguments: null);
+
+        // Nasłuchiwanie na experiment_queue
+        var experimentConsumer = new AsyncEventingBasicConsumer(channel);
+        experimentConsumer.ReceivedAsync += async (model, ea) =>
         {
-            // Połączenie z serwerem
-            using (TcpClient client = new TcpClient())
+            var experimentId = Encoding.UTF8.GetString(ea.Body.ToArray());
+            Console.WriteLine($"Otrzymano eksperyment ID: {experimentId}");
+
+            for (int i = 0; i < 10; i++)
             {
-                Console.WriteLine($"Łączenie z serwerem {serverIp}:{port}...");
-                await client.ConnectAsync(serverIp, port);
-                Console.WriteLine("Połączono z serwerem!");
-                
-                using (NetworkStream stream = client.GetStream())
-                {
-                    while (true)
-                    {
-                        // Wysyłanie wiadomości do serwera
-                        Console.Write("Wpisz wiadomość (lub 'exit' aby zakończyć): ");
-                        string message = Console.ReadLine();
-                        
-                        if (string.IsNullOrEmpty(message) || message.ToLower() == "exit")
-                            break;
-                        
-                        byte[] data = Encoding.UTF8.GetBytes(message);
-                        await stream.WriteAsync(data, 0, data.Length);
-                        
-                        // Odbieranie odpowiedzi od serwera
-                        byte[] buffer = new byte[1024];
-                        int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                        string response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        Console.WriteLine($"Odpowiedź serwera: {response}");
-                    }
-                }
-                
-                Console.WriteLine("Rozłączono z serwerem.");
+                var result = await PlaySingleGame(lc0Communaction);
+                var resultMsg = $"{experimentId};{result}";
+                var resultBody = Encoding.UTF8.GetBytes(resultMsg);
+                await channel.BasicPublishAsync(exchange: "", routingKey: ResultQueue, body: resultBody);
+                Console.WriteLine($"Wysłano wynik partii: {resultMsg}");
             }
-        }
-        catch (Exception ex)
+        };
+        await channel.BasicConsumeAsync(queue: InitQueue, autoAck: true, consumer: experimentConsumer);
+
+        Console.WriteLine("Naciśnij Enter, aby zakończyć...");
+        Console.ReadLine();
+    }
+    
+    private static async Task<string> PlaySingleGame(EngineCommunication engineCommunication)
+    {
+        string line;
+        
+        await engineCommunication.Input.WriteLineAsync("uci");
+        while ((line = await engineCommunication.Output.ReadLineAsync()) != null)
         {
-            Console.WriteLine($"Błąd: {ex.Message}");
+            if (line == "uciok") break;
         }
         
-        Console.WriteLine("Naciśnij dowolny klawisz, aby zakończyć...");
-        Console.ReadKey();
+        await engineCommunication.Input.WriteLineAsync("ucinewgame");
+        await engineCommunication.Input.WriteLineAsync("position startpos");
+        
+        await engineCommunication.Input.WriteLineAsync("isready");
+        while ((line = await engineCommunication.Output.ReadLineAsync()) != null)
+        {
+            if (line == "readyok") break;
+        }
+
+        var board = new ChessBoard() {AutoEndgameRules = AutoEndgameRules.All};
+
+        while (!board.IsEndGame)
+        {
+            await engineCommunication.Input.WriteLineAsync("go movetime 5");
+            while ((line = await engineCommunication.Output.ReadLineAsync()) != null)
+            {
+                if (line.StartsWith("bestmove"))
+                {
+                    var move = line.Split(' ')[1];
+                    string moveFrom = move.Substring(0, 2);
+                    string moveTo = move.Substring(2, 2);
+                    var bestMove = new Move(moveFrom, moveTo);
+                    board.Move(bestMove);
+                    break;
+                }
+            }
+
+            var fen = board.ToFen();
+            await engineCommunication.Input.WriteLineAsync($"position fen {fen}");
+            //Console.WriteLine(board.ToAscii());
+        }
+        
+        if(board.EndGame.WonSide == PieceColor.White)
+        {
+            return "white";
+        }
+        if(board.EndGame.WonSide == PieceColor.Black)
+        {
+            return "black";
+        }
+        return "draw";
     }
 }

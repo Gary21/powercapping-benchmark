@@ -1,77 +1,61 @@
-﻿using System;
-using System.Net;
-using System.Net.Sockets;
+﻿using System.Collections.Concurrent;
 using System.Text;
-using System.Threading.Tasks;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+
+namespace benchmark_server;
 
 class Server
 {
+    private static readonly ConcurrentDictionary<string, (int White, int Black, int Draws)> Stats = new();
+    private const string InitQueue = "init_queue";
+    private const string ResultQueue = "result_queue";
+
     static async Task Main()
     {
-        // Ustawienia serwera
-        IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
-        int port = 8888;
+        var factory = new ConnectionFactory() { HostName = "localhost" };
+        await using var connection = await factory.CreateConnectionAsync();
+        await using var channel = await connection.CreateChannelAsync();
+
+        await channel.QueueDeclareAsync(queue: InitQueue, durable: false, exclusive: false, autoDelete: false, arguments: null);
+        await channel.QueueDeclareAsync(queue: ResultQueue, durable: false, exclusive: false, autoDelete: false, arguments: null);
+
+        for (int i = 0; i < 5; i++)
+        {
+            string experimentId = Guid.NewGuid().ToString();
+            var body = Encoding.UTF8.GetBytes(experimentId);
+            await channel.BasicPublishAsync(exchange: "", routingKey: InitQueue, body: body);
+            Console.WriteLine($"Wysłano eksperyment ID: {experimentId}");
+            Stats.TryAdd(experimentId, (0, 0, 0));
+        }
         
-        // Utworzenie i konfiguracja gniazda TCP
-        TcpListener server = new TcpListener(ipAddress, port);
-        
-        try
+        var consumer = new AsyncEventingBasicConsumer(channel);
+        consumer.ReceivedAsync += (model, ea) =>
         {
-            // Uruchomienie nasłuchiwania
-            server.Start();
-            Console.WriteLine($"Serwer uruchomiony na {ipAddress}:{port}");
-            Console.WriteLine("Oczekiwanie na połączenia...");
-            
-            while (true)
+            var message = Encoding.UTF8.GetString(ea.Body.ToArray());
+            var parts = message.Split(';');
+            if (parts.Length == 2)
             {
-                // Akceptowanie połączenia klienta
-                TcpClient client = await server.AcceptTcpClientAsync();
-                Console.WriteLine("Klient połączony!");
-                
-                // Obsługa klienta w osobnym zadaniu
-                _ = HandleClientAsync(client);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Błąd: {ex.Message}");
-        }
-        finally
-        {
-            server.Stop();
-        }
-    }
-    
-    static async Task HandleClientAsync(TcpClient client)
-    {
-        using (client)
-        {
-            NetworkStream stream = client.GetStream();
-            byte[] buffer = new byte[1024];
-            
-            try
-            {
-                while (true)
+                var id = parts[0];
+                var result = parts[1];
+                if (Stats.TryGetValue(id, out var old))
                 {
-                    // Odbieranie danych od klienta
-                    int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                    if (bytesRead == 0) break; // Klient się rozłączył
-                    
-                    string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                    Console.WriteLine($"Odebrano: {message}");
-                    
-                    // Odesłanie odpowiedzi
-                    string response = $"Serwer otrzymał: {message}";
-                    byte[] responseData = Encoding.UTF8.GetBytes(response);
-                    await stream.WriteAsync(responseData, 0, responseData.Length);
+                    var updated = result switch
+                    {
+                        "white" => (old.White + 1, old.Black, old.Draws),
+                        "black" => (old.White, old.Black + 1, old.Draws),
+                        "draw" => (old.White, old.Black, old.Draws + 1),
+                        _ => old
+                    };
+                    Stats[id] = updated;
                 }
+                Console.WriteLine($"ID: {id} | Biały: {Stats[id].White}, Czarny: {Stats[id].Black}, Remisy: {Stats[id].Draws}");
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Błąd podczas obsługi klienta: {ex.Message}");
-            }
-            
-            Console.WriteLine("Klient rozłączony");
-        }
+            return Task.CompletedTask;
+        };
+        await channel.BasicConsumeAsync(queue: ResultQueue, autoAck: true, consumer: consumer);
+
+        Console.WriteLine("Naciśnij Enter, aby zakończyć...");
+        Console.ReadLine();
     }
 }
