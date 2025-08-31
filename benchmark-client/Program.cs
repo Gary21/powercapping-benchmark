@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Chess;
+using ManagedCuda.Nvml;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -13,6 +14,33 @@ class Client
     private const string EnginePathLc0 = "engines/lc0/lc0.exe";
     static async Task Main()
     {
+        string cpuBasePath = "/sys/class/powercap/intel-rapl:0/constraint_0_";
+        long cpuMin = long.Parse(File.ReadAllText(cpuBasePath + "min_power_uw"));
+        long cpuMax = long.Parse(File.ReadAllText(cpuBasePath + "max_power_uw"));
+        
+        var result = NvmlNativeMethods.nvmlInit();
+        if (result != nvmlReturn.Success)
+        {
+            Console.WriteLine($"Błąd inicjalizacji NVML: {result}");
+            return;
+        }
+        
+        nvmlDevice device = new nvmlDevice();
+        result = NvmlNativeMethods.nvmlDeviceGetHandleByIndex(0, ref device);
+        if (result != nvmlReturn.Success)
+        {
+            Console.WriteLine($"Błąd uchwytu: {result}");
+            NvmlNativeMethods.nvmlShutdown();
+            return;
+        }
+        
+        uint gpuMin = 0, gpuMax = 0;
+        result = NvmlNativeMethods.nvmlDeviceGetPowerManagementLimitConstraints(device, ref gpuMin, ref gpuMax);
+        if (result == nvmlReturn.Success)
+        {
+            Console.WriteLine($"Min: {gpuMin/1000} W, Max: {gpuMax/1000} W");
+        }
+        
         var stockfishCommunaction = new EngineCommunication(EnginePathStockfish);
         var lc0Communaction = new EngineCommunication(EnginePathLc0);
         
@@ -29,7 +57,7 @@ class Client
         {
             var message = Encoding.UTF8.GetString(ea.Body.ToArray());
             var parts = message.Split(';');
-            if (parts.Length != 2)
+            if (parts.Length != 3)
             {
                 Console.WriteLine("Nieprawidłowy format wiadomości eksperymentu.");
                 return;
@@ -40,7 +68,7 @@ class Client
             
             Console.WriteLine($"Otrzymano eksperyment: {engine}, powerCap: {powerCap}");
 
-            for (int i = 0; i < 30; i++)
+            for (int i = 0; i < numberOfGames; i++)
             {
                 var result = engine == "stockfish"
                     ? await PlaySingleGame(stockfishCommunaction)
@@ -57,7 +85,7 @@ class Client
         Console.ReadLine();
     }
     
-    private static async Task<string> PlaySingleGame(EngineCommunication engineCommunication)
+    private static async Task<string> PlaySingleGame(EngineCommunication engineCommunication, bool isGpu)
     {
         string line;
         
@@ -92,6 +120,24 @@ class Client
                     board.Move(bestMove);
                     break;
                 }
+            }
+
+            if (isGpu)
+            {
+                //zmienic limit mocy GPU
+                /*
+                    result = NvmlNativeMethods.nvmlDeviceSetPowerManagementLimit(device, newLimit);
+                    Console.WriteLine(result == nvmlReturn_t.Success
+                ? $"Nowy limit ustawiony: {newLimit / 1000} W"
+                : $"Błąd ustawiania: {result}");
+                 */
+            }
+            else
+            {
+                //zmienic limit mocy CPU
+                /*
+                string path = "/sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw";
+                File.WriteAllText(path, "65000000"); // np. 65W*/
             }
 
             var fen = board.ToFen();

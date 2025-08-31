@@ -4,8 +4,6 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
 namespace benchmark_server;
-// https://github.com/kunzmi/managedCuda 
-// MEGA WAZNE REPO
 class Server
 {
     private const string InitQueue = "init_queue";

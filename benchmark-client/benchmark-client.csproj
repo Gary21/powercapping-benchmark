@@ -17,6 +17,7 @@
 
     <ItemGroup>
       <PackageReference Include="Gera.Chess" Version="1.2.0" />
+      <PackageReference Include="ManagedCuda-Nvml.NETStandard" Version="9.1.300" />
       <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
     </ItemGroup>
 
