@@ -18,8 +18,8 @@ public class DatabaseHandler
         var existing = _db.Table<ExperimentResult>().FirstOrDefault(r => r.Engine == result.Engine && r.PowerCap == result.PowerCap);
         if (existing != null)
         {
-            existing.White += result.White;
-            existing.Black += result.Black;
+            existing.NocapWins += result.NocapWins;
+            existing.PowercapWins += result.PowercapWins;
             existing.Draws += result.Draws;
             _db.Update(existing);
             return;

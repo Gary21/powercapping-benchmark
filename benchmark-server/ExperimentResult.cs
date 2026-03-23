@@ -16,11 +16,11 @@ public class ExperimentResult
     [Column("powercap"), Indexed]
     public int PowerCap { get; set; }
     
-    [Column("white")]
-    public int White { get; set; }
+    [Column("nocapwins")]
+    public int NocapWins { get; set; }
     
-    [Column("black")]
-    public int Black { get; set; }
+    [Column("powercapwins")]
+    public int PowercapWins { get; set; }
     
     [Column("draws")]
     public int Draws { get; set; }
@@ -29,8 +29,8 @@ public class ExperimentResult
     {
         Engine = "";
         PowerCap = 0;
-        White = 0;
-        Black = 0;
+        NocapWins = 0;
+        PowercapWins = 0;
         Draws = 0;
     }
     
@@ -38,17 +38,17 @@ public class ExperimentResult
     {
         Engine = engine;
         PowerCap = powerCap;
-        White = 0;
-        Black = 0;
+        NocapWins = 0;
+        PowercapWins = 0;
         Draws = 0;
     }
     
-    public ExperimentResult(string engine, int powerCap, int white=0, int black=0, int draws=0)
+    public ExperimentResult(string engine, int powerCap, int nocapWins=0, int powercapWins=0, int draws=0)
     {
         Engine = engine;
         PowerCap = powerCap;
-        White = white;
-        Black = black;
+        NocapWins = nocapWins;
+        PowercapWins = powercapWins;
         Draws = draws;
     }
 }
