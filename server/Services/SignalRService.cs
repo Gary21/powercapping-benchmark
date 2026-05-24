@@ -15,4 +15,9 @@ public class SignalRService : Hub
         Console.WriteLine($"[Hub] Disconnected: {Context.ConnectionId} ({exception?.Message ?? "ok"})");
         return base.OnDisconnectedAsync(exception);
     }
+    
+    public void Pong(string message)
+    {
+        Console.WriteLine($"[Hub] Pong from {Context.ConnectionId}: {message}");
+    }
 }

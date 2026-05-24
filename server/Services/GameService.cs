@@ -7,11 +7,11 @@ namespace server.Services;
 public class GameService
 {
     private ConcurrentDictionary<string, GameStateModel> Games = new ConcurrentDictionary<string, GameStateModel>();
-    private readonly IHubContext<SignalRService> _hubContext;
+    private readonly IHubContext<SignalRService> _hub;
 
-    public GameService(IHubContext<SignalRService> hubContext)
+    public GameService(IHubContext<SignalRService> hub)
     {
-        _hubContext = hubContext;
+        _hub = hub;
     }
 
     public async void InitGame(NewGameModel newGame)
@@ -33,11 +33,14 @@ public class GameService
             };
         
             Games.TryAdd(newGame.GameId, currentState);
-            await _hubContext.Clients.Group(currentState.GameId).SendAsync("GameStarted", currentState);
+            await _hub.Clients.Group(currentState.GameId).SendAsync("GameStarted", currentState);
         }
         catch (Exception e)
         {
             throw; // TODO handle exception
         }
     }
+    
+    public async Task Ping(string message)
+        => await _hub.Clients.All.SendAsync("ReceiveMessage", message);
 }

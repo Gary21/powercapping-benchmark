@@ -9,7 +9,7 @@ public class Worker : BackgroundService
 
     public Worker(ILogger<Worker> logger)
     {
-        _logger = logger;
+        _logger = logger; 
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -36,6 +36,12 @@ public class Worker : BackgroundService
             _logger.LogWarning(error, "SignalR connection closed.");
             return Task.CompletedTask;
         };
+        
+        connection.On<string>("ReceiveMessage", message =>
+        {
+            _logger.LogInformation("ReceiveMessage: {message}", message);
+            connection.SendAsync("Pong", $"ack: {message}", stoppingToken);
+        });
 
         _logger.LogInformation("Connecting to: {ip}", HubUrl);
         await connection.StartAsync(stoppingToken);
