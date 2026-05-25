@@ -37,9 +37,9 @@ public class Worker : BackgroundService
             return Task.CompletedTask;
         };
         
-        connection.On<string>("ReceiveMessage", message =>
+        connection.On<string>("Ping", message =>
         {
-            _logger.LogInformation("ReceiveMessage: {message}", message);
+            _logger.LogInformation("Ping: {message}", message);
             connection.SendAsync("Pong", $"ack: {message}", stoppingToken);
         });
 
