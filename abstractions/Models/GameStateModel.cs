@@ -21,4 +21,5 @@ public class GameStateModel
     public string PowerCapColor { get; set; }
     public string WhitePlayer { get; set; }
     public string BlackPlayer { get; set; }
+    public string CurrentTurn { get; set; }
 }

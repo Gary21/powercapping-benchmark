@@ -5,10 +5,11 @@ using server.Stores;
 
 namespace server.Services;
 
-public class SignalRService : Hub<IChessClient>
+public class SignalRService(ClientSessionsStore clientSessionsStore, GameService gameService)
+    : Hub<IChessClient>
 {
-    private ConcurrentDictionary<string, ClientSessionModel> _clientSessions;
-    public SignalRService(ClientSessionsStore clientSessionsStore) => _clientSessions = clientSessionsStore.ClientSessions;
+    private ConcurrentDictionary<string, ClientSessionModel> _clientSessions = clientSessionsStore.ClientSessions;
+
     public override Task OnConnectedAsync()
     {
         Console.WriteLine($"[Hub] Connected: {Context.ConnectionId}");
@@ -28,8 +29,27 @@ public class SignalRService : Hub<IChessClient>
         return base.OnDisconnectedAsync(exception);
     }
     
-    public void Pong(string message)
+    public void MoveMade(string message)
     {
-        Console.WriteLine($"[Hub] Pong from {Context.ConnectionId}: {message}");
+        Console.WriteLine($"[Hub] Move: {message} from: {Context.ConnectionId}:");
+        var opponentId = gameService.GetOpponent(Context.ConnectionId);
+        if (gameService.TempCounter > 30)
+        {
+            Console.WriteLine("[Hub] Simulating game finish...");
+            gameService.FinishGame(_clientSessions[Context.ConnectionId].GameId!);
+        }
+        Console.WriteLine($"[Hub] Sending move to opponent: {opponentId}");
+        if (opponentId != null)
+        {
+            Clients.Client(opponentId).MoveMade(new MoveMadeModel
+            {
+                GameId = _clientSessions[Context.ConnectionId].GameId!,
+                Move = message,
+                WhiteTimeLeft = 100f,
+                BlackTimeLeft = 100f
+            });
+        }
+
+        gameService.TempCounter++;
     }
 }

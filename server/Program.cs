@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<GameService>();
+builder.Services.AddSingleton<GameService>();
 builder.Services.AddSingleton<ClientSessionsStore>();
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
 builder.Services.AddCors(options =>

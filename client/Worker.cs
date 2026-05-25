@@ -44,9 +44,24 @@ public class Worker : BackgroundService
             connection.SendAsync("Pong", $"ack: {message}", stoppingToken);
         });
         
-        connection.On<GameStateModel>("GameStarted", gameState =>
+        connection.On<GameStateModel, bool>("GameStarted", (gameState,isWhite) =>
         {
             _logger.LogInformation("GameStarted Recieved");
+            if (isWhite)
+            {
+                connection.SendAsync("MoveMade", $"move-placeholder", stoppingToken);
+            }
+        });
+        
+        connection.On<MoveMadeModel>("MoveMade", moveMade =>
+        {
+            _logger.LogInformation("MoveMade Recieved");
+            connection.SendAsync("MoveMade", $"{moveMade.Move}*", stoppingToken);
+        });
+        
+        connection.On("GameFinished", () =>
+        {
+            _logger.LogInformation("GameFinished Recieved");
         });
 
         _logger.LogInformation("Connecting to: {ip}", HubUrl);
