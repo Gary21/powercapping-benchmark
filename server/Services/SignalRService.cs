@@ -1,8 +1,9 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using server.Models;
 
 namespace server.Services;
 
-public class SignalRService : Hub
+public class SignalRService : Hub<IChessClient>
 {
     public override Task OnConnectedAsync()
     {
