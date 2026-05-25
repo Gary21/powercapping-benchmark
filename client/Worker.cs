@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR.Client;
+using server.Models;
 
 namespace client;
 
@@ -41,6 +42,11 @@ public class Worker : BackgroundService
         {
             _logger.LogInformation("Ping: {message}", message);
             connection.SendAsync("Pong", $"ack: {message}", stoppingToken);
+        });
+        
+        connection.On<GameStateModel>("GameStarted", gameState =>
+        {
+            _logger.LogInformation("GameStarted Recieved");
         });
 
         _logger.LogInformation("Connecting to: {ip}", HubUrl);

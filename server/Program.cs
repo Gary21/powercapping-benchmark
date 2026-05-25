@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
+using server.Models;
 using server.Services;
+using server.Stores;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<GameService>();
+builder.Services.AddSingleton<ClientSessionsStore>();
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
 builder.Services.AddCors(options =>
 {
@@ -32,6 +35,21 @@ app.MapHub<SignalRService>("/chessHub");
 app.MapGet("/ping", async (GameService gameService) =>
 {
     await gameService.Ping("dupa");
+    return Results.Ok(new { ok = true });
+});
+app.MapGet("/newGame", async (GameService gameService) =>
+{
+    var newGame = new NewGameModel
+    {
+        GameId = "game1",
+        Engine = "stockfish",
+        PowerCap = 50,
+        TimeControl = 300,
+        TimeIncrement = 2,
+        InitialPosition = "startpos",
+        PowerCapColor = "white"
+    };
+    await gameService.InitGame(newGame);
     return Results.Ok(new { ok = true });
 });
 

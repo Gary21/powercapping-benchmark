@@ -19,4 +19,6 @@ public class GameStateModel
     public string InitialPosition { get; set; }
     
     public string PowerCapColor { get; set; }
+    public string WhitePlayer { get; set; }
+    public string BlackPlayer { get; set; }
 }

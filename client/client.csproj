@@ -11,4 +11,8 @@
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.8" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1"/>
     </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\abstractions\abstractions.csproj" />
+    </ItemGroup>
 </Project>

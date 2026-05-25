@@ -1,12 +1,14 @@
 ﻿using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using server.Models;
+using server.Stores;
 
 namespace server.Services;
 
 public class SignalRService : Hub<IChessClient>
 {
-    private ConcurrentDictionary<string, ClientSessionModel> _clientSessions = new();
+    private ConcurrentDictionary<string, ClientSessionModel> _clientSessions;
+    public SignalRService(ClientSessionsStore clientSessionsStore) => _clientSessions = clientSessionsStore.ClientSessions;
     public override Task OnConnectedAsync()
     {
         Console.WriteLine($"[Hub] Connected: {Context.ConnectionId}");
