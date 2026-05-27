@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using Chess;
 using Microsoft.AspNetCore.SignalR;
 using server.Models;
 using server.Stores;
@@ -10,17 +11,15 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
     private ConcurrentDictionary<string, GameStateModel> _games = new ConcurrentDictionary<string, GameStateModel>();
     private ConcurrentDictionary<string, ClientSessionModel> _clientSessions = clientSessionsStore.ClientSessions;
     private PeriodicTimer timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
-    public int TempCounter = 0;
     
     public async Task InitGame(NewGameModel newGame)
     {
             var (player1, player2) = await FindTwoPlayers();
             Console.WriteLine($"Starting game {newGame.GameId} between {player1} and {player2}");
-            AllignGameToClients(newGame.GameId, [player1, player2]);
+            AlignGameToClients(newGame.GameId, [player1, player2]);
             var currentState = new GameStateModel
             {
                 GameId = newGame.GameId,
-                CurrentPosition = newGame.InitialPosition,
                 WhiteTimeLeft = newGame.TimeControl,
                 BlackTimeLeft = newGame.TimeControl,
                 Engine = newGame.Engine,
@@ -30,7 +29,8 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
                 InitialPosition = newGame.InitialPosition,
                 PowerCapColor = newGame.PowerCapColor,
                 WhitePlayer = player1,
-                BlackPlayer = player2
+                BlackPlayer = player2,
+                Board = ChessBoard.LoadFromFen(newGame.InitialPosition, AutoEndgameRules.All)
             };
             _games.TryAdd(currentState.GameId, currentState);
             await hub.Clients.Clients(player1).GameStarted(newGame, true);
@@ -53,6 +53,16 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
     
     public string? GetOpponent(string playerId)
     {
+        /*Console.WriteLine("Player " + playerId + " is asking for opponent.");
+        foreach (var gameState in _games)
+        {
+            Console.WriteLine($"Game {gameState.Key}: White: {gameState.Value.WhitePlayer}, Black: {gameState.Value.BlackPlayer}");
+        }
+
+        foreach (var clientSession in _clientSessions)
+        {
+            Console.WriteLine("Client " + clientSession.Key + ": IsIdle: " + clientSession.Value.IsIdle + ", GameId: " + clientSession.Value.GameId);
+        }*/
         if (_clientSessions.TryGetValue(playerId, out var session) && session.GameId != null)
         {
             var gameId = session.GameId;
@@ -62,6 +72,19 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
                     return gameState.BlackPlayer;
                 if (gameState.BlackPlayer == playerId)
                     return gameState.WhitePlayer;
+            }
+        }
+        return null;
+    }
+    
+    public GameStateModel? GetGameState(string playerId)
+    {
+        if (_clientSessions.TryGetValue(playerId, out var session) && session.GameId != null)
+        {
+            var gameId = session.GameId;
+            if (_games.TryGetValue(gameId, out var gameState))
+            {
+                return gameState;
             }
         }
         return null;
@@ -86,7 +109,7 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
         }
     }
     
-    private void AllignGameToClients(string gameId, List<string> clientIds)
+    private void AlignGameToClients(string gameId, List<string> clientIds)
     {
         foreach (var clientId in clientIds)
         {

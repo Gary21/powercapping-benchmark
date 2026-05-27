@@ -46,7 +46,7 @@ app.MapGet("/newGame", async (GameService gameService) =>
         PowerCap = 50,
         TimeControl = 300,
         TimeIncrement = 2,
-        InitialPosition = "startpos",
+        InitialPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         PowerCapColor = "white"
     };
     await gameService.InitGame(newGame);

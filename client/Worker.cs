@@ -1,3 +1,4 @@
+using client.Services;
 using Microsoft.AspNetCore.SignalR.Client;
 using server.Models;
 
@@ -7,6 +8,7 @@ public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
     private const string HubUrl = "http://des07.kask:5000/chessHub";
+    private EngineCommunication engineHandler;
 
     public Worker(ILogger<Worker> logger)
     {
@@ -47,16 +49,19 @@ public class Worker : BackgroundService
         connection.On<GameStateModel, bool>("GameStarted", (gameState,isWhite) =>
         {
             _logger.LogInformation("GameStarted Recieved");
+            engineHandler = new EngineCommunication();
             if (isWhite)
             {
-                connection.SendAsync("MoveMade", $"move-placeholder", stoppingToken);
+                var moves = engineHandler.MakeMove(gameState.InitialPosition);
+                connection.SendAsync("MoveMade", moves, stoppingToken);
             }
         });
         
         connection.On<MoveMadeModel>("MoveMade", moveMade =>
         {
             _logger.LogInformation("MoveMade Recieved");
-            connection.SendAsync("MoveMade", $"{moveMade.Move}*", stoppingToken);
+            var move = engineHandler.MakeMove(moveMade.CurrentFen);
+            connection.SendAsync("MoveMade", $"{move}", stoppingToken);
         });
         
         connection.On("GameFinished", () =>
