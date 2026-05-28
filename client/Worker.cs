@@ -46,13 +46,13 @@ public class Worker : BackgroundService
             connection.SendAsync("Pong", $"ack: {message}", stoppingToken);
         });
         
-        connection.On<GameStateModel, bool>("GameStarted", (gameState,isWhite) =>
+        connection.On<NewGameModel, bool>("GameStarted", (gameState,isWhite) =>
         {
             _logger.LogInformation("GameStarted Recieved");
             engineHandler = new EngineCommunication();
             if (isWhite)
             {
-                var moves = engineHandler.MakeMove(gameState.InitialPosition);
+                var moves = engineHandler.MakeMove(new MoveMadeModel(gameState));
                 connection.SendAsync("MoveMade", moves, stoppingToken);
             }
         });
@@ -60,7 +60,7 @@ public class Worker : BackgroundService
         connection.On<MoveMadeModel>("MoveMade", moveMade =>
         {
             _logger.LogInformation("MoveMade Recieved");
-            var move = engineHandler.MakeMove(moveMade.CurrentFen);
+            var move = engineHandler.MakeMove(moveMade);
             connection.SendAsync("MoveMade", $"{move}", stoppingToken);
         });
         

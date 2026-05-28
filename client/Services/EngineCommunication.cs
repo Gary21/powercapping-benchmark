@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using server.Models;
 
 namespace client.Services;
 
@@ -28,12 +29,13 @@ public class EngineCommunication
         SetupEngine();
     }
     
-    public string MakeMove(string currentFen)
+    public string MakeMove(MoveMadeModel moveMade)
     {
-        Input.WriteLine($"position fen {currentFen}");
+        Input.WriteLine($"position fen {moveMade.CurrentFen}");
         WaitForReady();
-        Input.WriteLine("go movetime 10000");
-        string bestMove = "";
+        var moveCommand =
+            $"go wtime {moveMade.WhiteTimeLeft} btime {moveMade.BlackTimeLeft} winc {moveMade.Increment} binc {moveMade.Increment}";
+        Input.WriteLine(moveCommand);
         string nps = "";
         string depth = "";
         string nodes = "";
@@ -44,7 +46,7 @@ public class EngineCommunication
             Console.WriteLine($"[Stockfish]: {line}");
             if (line.StartsWith("bestmove"))
             {
-                bestMove = line.Split(' ')[1];
+                var bestMove = line.Split(' ')[1];
                 Console.Write("Best move: " + bestMove + "\n");
                 Console.Write("Depth: " + depth + ", NPS: " + nps + ", Nodes: " + nodes + ", Score:" + score + "\n");
                 return bestMove;
@@ -67,6 +69,7 @@ public class EngineCommunication
     {
         Input.WriteLine("uci");
         while (Output.ReadLine() != "uciok") { }
+        Input.WriteLine("setoption name Threads value 24");
         Input.WriteLine("ucinewgame");
         WaitForReady();
     }

@@ -44,8 +44,8 @@ app.MapGet("/newGame", async (GameService gameService) =>
         GameId = "game1",
         Engine = "stockfish",
         PowerCap = 50,
-        TimeControl = 300,
-        TimeIncrement = 2,
+        TimeControl = 180000,
+        TimeIncrement = 2000,
         InitialPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         PowerCapColor = "white"
     };

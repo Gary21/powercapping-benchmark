@@ -33,8 +33,12 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
                 Board = ChessBoard.LoadFromFen(newGame.InitialPosition, AutoEndgameRules.All)
             };
             _games.TryAdd(currentState.GameId, currentState);
+            currentState.LastMoveTimestamp = DateTime.UtcNow;
             await hub.Clients.Clients(player1).GameStarted(newGame, true);
             await hub.Clients.Clients(player2).GameStarted(newGame, false);
+            Console.WriteLine($"[Hub] Game starting...\n");
+            Console.WriteLine($"[Hub] Time left - White: {currentState.WhiteTimeLeft} ms, Black: {currentState.BlackTimeLeft} ms.");
+            Console.WriteLine($"[Hub] Current position: \n{currentState.Board.ToAscii()}\n");
     }
     
     public async Task FinishGame(string GameId)
