@@ -3,7 +3,7 @@
 public class MoveMadeModel
 {
     public string GameId { get; set; }
-    public string CurrentFen { get; set; }
+    public string CurrentMoves { get; set; }
     public long WhiteTimeLeft { get; set; }
     public long BlackTimeLeft { get; set; }
     public long Increment { get; set; }
@@ -12,7 +12,7 @@ public class MoveMadeModel
     public MoveMadeModel(NewGameModel gameState)
     {
         GameId = gameState.GameId;
-        CurrentFen = gameState.InitialPosition;
+        CurrentMoves = "position startpos moves " + gameState.InitialMoves;
         WhiteTimeLeft = gameState.TimeControl;
         BlackTimeLeft = gameState.TimeControl;
         Increment = gameState.TimeIncrement;

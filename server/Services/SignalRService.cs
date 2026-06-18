@@ -71,11 +71,35 @@ public class SignalRService(ClientSessionsStore clientSessionsStore, GameService
             Clients.Client(opponentId).MoveMade(new MoveMadeModel
             {
                 GameId = _clientSessions[Context.ConnectionId].GameId!,
-                CurrentFen = gameState.Board.ToFen(),
+                CurrentMoves = GetStockfishPositionCommand(gameState.Board),
                 WhiteTimeLeft = gameState.WhiteTimeLeft,
                 BlackTimeLeft = gameState.BlackTimeLeft,
                 Increment = gameState.TimeIncrement
             });
         }
+    }
+    
+    public string GetStockfishPositionCommand(ChessBoard board)
+    {
+        var uciMoves = board.ExecutedMoves.Select(m => 
+        {
+            string moveString = $"{m.OriginalPosition.ToString().ToLower()}{m.NewPosition.ToString().ToLower()}";
+            
+            if (m.Promotion != null)
+            {
+                moveString += m.Promotion.ToString().ToLower()[0]; 
+            }
+        
+            return moveString;
+        });
+        
+        string movesString = string.Join(" ", uciMoves);
+        
+        if (string.IsNullOrEmpty(movesString))
+        {
+            return "position startpos";
+        }
+
+        return $"position startpos moves {movesString}";
     }
 }

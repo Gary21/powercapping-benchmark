@@ -49,8 +49,8 @@ app.MapGet("/newGame", async (GameService gameService, int timeControl, int time
             PowerCap = powerCapPercent,
             TimeControl = timeControl,
             TimeIncrement = timeIncrement,
-            InitialPosition = initialPosition,
-            PowerCapColor = "white"
+            PowerCapColor = "white",
+            InitialMoves = ""
         };
         await gameService.InitGame(newGame);
         newGame = new NewGameModel
@@ -60,8 +60,8 @@ app.MapGet("/newGame", async (GameService gameService, int timeControl, int time
             PowerCap = powerCapPercent,
             TimeControl = timeControl,
             TimeIncrement = timeIncrement,
-            InitialPosition = initialPosition,
-            PowerCapColor = "black"
+            PowerCapColor = "black",
+            InitialMoves = ""
         };
         await gameService.InitGame(newGame);
     }

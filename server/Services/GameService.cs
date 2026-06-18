@@ -11,6 +11,7 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
     private ConcurrentDictionary<string, GameStateModel> _games = new ConcurrentDictionary<string, GameStateModel>();
     private ConcurrentDictionary<string, ClientSessionModel> _clientSessions = clientSessionsStore.ClientSessions;
     private PeriodicTimer timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
+    private const string StartingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     
     public async Task InitGame(NewGameModel newGame)
     {
@@ -26,11 +27,11 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
                 PowerCap = newGame.PowerCap,
                 TimeControl = newGame.TimeControl,
                 TimeIncrement = newGame.TimeIncrement,
-                InitialPosition = newGame.InitialPosition,
                 PowerCapColor = newGame.PowerCapColor,
                 WhitePlayer = player1,
                 BlackPlayer = player2,
-                Board = ChessBoard.LoadFromFen(newGame.InitialPosition, AutoEndgameRules.All)
+                Board = ChessBoard.LoadFromFen(StartingFen, AutoEndgameRules.All),
+                InitialMoves = newGame.InitialMoves
             };
             _games.TryAdd(currentState.GameId, currentState);
             currentState.LastMoveTimestamp = DateTime.UtcNow;
@@ -71,7 +72,7 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
                 PowerCap = gameState.PowerCap,
                 TimeControl = gameState.TimeControl,
                 TimeIncrement = gameState.TimeIncrement,
-                InitialPosition = gameState.InitialPosition,
+                InitialPosition = gameState.InitialMoves,
                 PowerCapColor = gameState.PowerCapColor,
                 Result = winner,
                 EndgameType = gameState.Board.EndGame.EndgameType.ToString(),

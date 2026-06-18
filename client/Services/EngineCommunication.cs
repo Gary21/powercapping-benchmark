@@ -33,7 +33,7 @@ public class EngineCommunication : IDisposable
     public SubmitMoveModel MakeMove(MoveMadeModel moveMade)
     {
         string path = "/sys/class/powercap/intel-rapl/intel-rapl:0/energy_uj";
-        Input.WriteLine($"position fen {moveMade.CurrentFen}");
+        Input.WriteLine(moveMade.CurrentMoves);
         WaitForReady();
         string nps = "";
         string depth = "";
