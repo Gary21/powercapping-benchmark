@@ -6,7 +6,7 @@ using server.Stores;
 
 namespace server.Services;
 
-public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSessionsStore clientSessionsStore)
+public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSessionsStore clientSessionsStore, DatabaseHandler databaseHandler)
 {
     private ConcurrentDictionary<string, GameStateModel> _games = new ConcurrentDictionary<string, GameStateModel>();
     private ConcurrentDictionary<string, ClientSessionModel> _clientSessions = clientSessionsStore.ClientSessions;
@@ -48,6 +48,35 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
             Console.WriteLine($"Finishing game {GameId} between {gameState.WhitePlayer} and {gameState.BlackPlayer}.");
             await hub.Clients.Group(GameId).GameFinished();
             FreeClientsFromGame(gameState.GameId, [gameState.WhitePlayer, gameState.BlackPlayer]);
+            string winner;
+            if (gameState.WhiteTimeLeft <= 0)
+            {
+                winner = "b";
+            }
+            else if (gameState.BlackTimeLeft <= 0)
+            {
+                winner = "w";
+            }
+            else
+            {
+                winner = gameState.Board.EndGame.WonSide != null
+                    ? $"{gameState.Board.EndGame.WonSide.AsChar}"
+                    : "d";
+            }
+            Console.WriteLine($"[Hub] Game finishing... {winner}, type: {gameState.Board.EndGame.EndgameType}");
+            var finishedGame = new FinishedGameModel
+            {
+                GameId = gameState.GameId,
+                Engine = gameState.Engine,
+                PowerCap = gameState.PowerCap,
+                TimeControl = gameState.TimeControl,
+                TimeIncrement = gameState.TimeIncrement,
+                InitialPosition = gameState.InitialPosition,
+                PowerCapColor = gameState.PowerCapColor,
+                Result = winner,
+                EndgameType = gameState.Board.EndGame.EndgameType.ToString(),
+            };
+            databaseHandler.InsertResult(finishedGame);
         }
         else
         {

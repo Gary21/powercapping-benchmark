@@ -32,6 +32,9 @@ public class SignalRService(ClientSessionsStore clientSessionsStore, GameService
     
     public void MoveMade(string message)
     {
+        //var splittedMessage = message.Split(',');
+        //var moveMessage = splittedMessage[0];
+        //var avgPower = double.Parse(splittedMessage[1]);
         Console.WriteLine($"[Hub] Move: {message} from: {Context.ConnectionId}");
         var timeElapsed = DateTime.UtcNow - gameService.GetGameState(Context.ConnectionId)!.LastMoveTimestamp;
         Console.WriteLine($"[Hub] Time elapsed since last move: {timeElapsed.TotalMilliseconds} milliseconds.");
@@ -49,33 +52,13 @@ public class SignalRService(ClientSessionsStore clientSessionsStore, GameService
             gameState.BlackTimeLeft += gameState.TimeIncrement;
         }
         Console.WriteLine($"[Hub] Time left - White: {gameState.WhiteTimeLeft} ms, Black: {gameState.BlackTimeLeft} ms.");
-        var move = new Move(message[..2], message[2..]);
-        if(message.Length > 4)
-        {
-            move = new Move($"{message[2..4]}={message[4]}");
-        }
+        var move = new Move(message[..2], message[2..4]);
         if(!gameState.Board.Move(move))
         {
             Console.WriteLine($"[Hub] Move {message} is illegal.");
         }
         if (gameState.Board.IsEndGame || gameState.WhiteTimeLeft <= 0 || gameState.BlackTimeLeft <= 0)
         {
-            string winner;
-            if (gameState.WhiteTimeLeft <= 0)
-            {
-                winner = "Black wins on time";
-            }
-            else if (gameState.BlackTimeLeft <= 0)
-            {
-                winner = "White wins on time";
-            }
-            else
-            {
-                winner = gameState.Board.EndGame.WonSide != null
-                    ? $"{gameState.Board.EndGame.WonSide.AsChar} won"
-                    : "draw";
-            }
-            Console.WriteLine($"[Hub] Game finishing... {winner}");
             gameService.FinishGame(_clientSessions[Context.ConnectionId].GameId!);
             return;
         }

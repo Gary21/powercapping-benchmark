@@ -7,12 +7,14 @@ namespace client;
 public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
+    private readonly IEngineCommunicationFactory _engineFactory;
     private const string HubUrl = "http://des07.kask:5000/chessHub";
     private EngineCommunication engineHandler;
 
-    public Worker(ILogger<Worker> logger)
+    public Worker(ILogger<Worker> logger, IEngineCommunicationFactory engineFactory)
     {
-        _logger = logger; 
+        _logger = logger;
+        _engineFactory = engineFactory;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -49,7 +51,7 @@ public class Worker : BackgroundService
         connection.On<NewGameModel, bool>("GameStarted", (gameState,isWhite) =>
         {
             _logger.LogInformation("GameStarted Recieved");
-            engineHandler = new EngineCommunication();
+            engineHandler = _engineFactory.Create(isWhite, gameState.PowerCap, gameState.PowerCapColor);
             if (isWhite)
             {
                 var moves = engineHandler.MakeMove(new MoveMadeModel(gameState));
@@ -67,6 +69,8 @@ public class Worker : BackgroundService
         connection.On("GameFinished", () =>
         {
             _logger.LogInformation("GameFinished Recieved");
+            engineHandler.Dispose();
+            engineHandler = null;
         });
 
         _logger.LogInformation("Connecting to: {ip}", HubUrl);

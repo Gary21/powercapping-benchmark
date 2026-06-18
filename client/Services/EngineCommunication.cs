@@ -3,18 +3,19 @@ using server.Models;
 
 namespace client.Services;
 
-public class EngineCommunication
+public class EngineCommunication : IDisposable
 {
     private readonly Process _process;
     public readonly StreamWriter Input;
     public readonly StreamReader Output;
-    private static long cpuMax;
-    const string cpuBasePath = "/sys/class/powercap/intel-rapl:0/constraint_0_";
+    private double totalEnergyUsed = 0;
+    private double totalTimeUsed = 0;
+    private PowerLimitState _powerState;
+    
 
-    public EngineCommunication()
+    public EngineCommunication(bool isWhite, int powerCapPercent, string powerCapColor, PowerLimitState powerState)
     {
-        cpuMax = long.Parse(File.ReadAllText(cpuBasePath + "max_power_uw"));
-        Console.WriteLine($"Max cpu: {cpuMax/1000000} W");
+        _powerState = powerState;
         var psi = new ProcessStartInfo
         {
             FileName = "engines/stockfish",
@@ -26,31 +27,27 @@ public class EngineCommunication
         _process = Process.Start(psi);
         Input = _process.StandardInput;
         Output = _process.StandardOutput;
-        SetupEngine();
+        SetupEngine(isWhite, powerCapPercent, powerCapColor);
     }
     
     public string MakeMove(MoveMadeModel moveMade)
     {
+        string path = "/sys/class/powercap/intel-rapl/intel-rapl:0/energy_uj";
         Input.WriteLine($"position fen {moveMade.CurrentFen}");
         WaitForReady();
-        var moveCommand =
-            $"go wtime {moveMade.WhiteTimeLeft} btime {moveMade.BlackTimeLeft} winc {moveMade.Increment} binc {moveMade.Increment}";
-        Input.WriteLine(moveCommand);
         string nps = "";
         string depth = "";
         string nodes = "";
         string score = "";
+        var moveCommand =
+            $"go wtime {moveMade.WhiteTimeLeft} btime {moveMade.BlackTimeLeft} winc {moveMade.Increment} binc {moveMade.Increment}";
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var startUj = long.Parse(File.ReadAllText(path));
+        Input.WriteLine(moveCommand);
         while (true)
         {
             var line = Output.ReadLine();
             Console.WriteLine($"[Stockfish]: {line}");
-            if (line.StartsWith("bestmove"))
-            {
-                var bestMove = line.Split(' ')[1];
-                Console.Write("Best move: " + bestMove + "\n");
-                Console.Write("Depth: " + depth + ", NPS: " + nps + ", Nodes: " + nodes + ", Score:" + score + "\n");
-                return bestMove;
-            }
             if(line.StartsWith("info"))
             {
                 var values =  line.Split(' ');
@@ -62,14 +59,46 @@ public class EngineCommunication
                     score = values[9];
                 }
             }
+            else if (line.StartsWith("bestmove"))
+            {
+                var finishUj = long.Parse(File.ReadAllText(path));
+                watch.Stop();
+                var energyJ = (finishUj - startUj) / 1_000_000.0;
+                var timeS = watch.ElapsedMilliseconds / 1000.0;
+                var powerW = energyJ / timeS;
+                Console.WriteLine(powerW + " W");
+                if (energyJ > 0)
+                {
+                    totalEnergyUsed += energyJ;
+                    totalTimeUsed += timeS;
+                }
+                var avgPowerW = totalEnergyUsed / totalTimeUsed;
+                Console.WriteLine("Average power: " + avgPowerW + " W");
+                var bestMove = line.Split(' ')[1];
+                Console.Write("Best move: " + bestMove + "\n");
+                Console.Write("Depth: " + depth + ", NPS: " + nps + ", Nodes: " + nodes + ", Score:" + score + "\n");
+                return bestMove;
+            }
         }
     }
     
-    private void SetupEngine()
+    private void SetupEngine(bool isWhite, int powerCapPercent, string powerCapColor)
     {
         Input.WriteLine("uci");
         while (Output.ReadLine() != "uciok") { }
+        if ((isWhite && powerCapColor == "white") || (!isWhite && powerCapColor == "black"))
+        {
+            _powerState.TargetLimitPercent = powerCapPercent;
+            Thread.Sleep(100);
+        }
+        if ((!isWhite && powerCapColor == "white") || (isWhite && powerCapColor == "black"))
+        {
+            _powerState.TargetLimitPercent = 100;
+            Thread.Sleep(100);
+        }
+        Input.WriteLine("setoption name Clear Hash");
         Input.WriteLine("setoption name Threads value 24");
+        Input.WriteLine("setoption name Hash value 2048");
         Input.WriteLine("ucinewgame");
         WaitForReady();
     }
@@ -80,7 +109,7 @@ public class EngineCommunication
         while (Output.ReadLine() != "readyok") { }
     }
     
-    ~EngineCommunication()
+    public void Dispose()
     {
         if (!_process.HasExited)
         {
@@ -88,5 +117,10 @@ public class EngineCommunication
         }
         Input?.Dispose();
         Output?.Dispose();
+    }
+    
+    ~EngineCommunication()
+    {
+        Dispose();
     }
 }

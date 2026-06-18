@@ -11,6 +11,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<GameService>();
 builder.Services.AddSingleton<ClientSessionsStore>();
+builder.Services.AddSingleton<DatabaseHandler>();
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
 builder.Services.AddCors(options =>
 {
@@ -37,19 +38,33 @@ app.MapGet("/ping", async (GameService gameService) =>
     await gameService.Ping("dupa");
     return Results.Ok(new { ok = true });
 });
-app.MapGet("/newGame", async (GameService gameService) =>
+app.MapGet("/newGame", async (GameService gameService, int timeControl, int timeIncrement, int powerCapPercent, int noOfGamesPerSide, string initialPosition) =>
 {
-    var newGame = new NewGameModel
+    for (int i = 0; i < noOfGamesPerSide; i++)
     {
-        GameId = "game1",
-        Engine = "stockfish",
-        PowerCap = 50,
-        TimeControl = 180000,
-        TimeIncrement = 2000,
-        InitialPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-        PowerCapColor = "white"
-    };
-    await gameService.InitGame(newGame);
+        var newGame = new NewGameModel
+        {
+            GameId = Guid.NewGuid().ToString(),
+            Engine = "stockfish",
+            PowerCap = powerCapPercent,
+            TimeControl = timeControl,
+            TimeIncrement = timeIncrement,
+            InitialPosition = initialPosition,
+            PowerCapColor = "white"
+        };
+        await gameService.InitGame(newGame);
+        newGame = new NewGameModel
+        {
+            GameId = Guid.NewGuid().ToString(),
+            Engine = "stockfish",
+            PowerCap = powerCapPercent,
+            TimeControl = timeControl,
+            TimeIncrement = timeIncrement,
+            InitialPosition = initialPosition,
+            PowerCapColor = "black"
+        };
+        await gameService.InitGame(newGame);
+    }
     return Results.Ok(new { ok = true });
 });
 
