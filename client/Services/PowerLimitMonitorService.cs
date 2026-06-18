@@ -6,7 +6,8 @@ public class PowerLimitMonitorService : BackgroundService
     private const string CpuBasePath = "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/";
     private const string PathLimit0 = CpuBasePath + "constraint_0_power_limit_uw";
     private const string PathLimit1 = CpuBasePath + "constraint_1_power_limit_uw";
-    private const string PathLimit2 = CpuBasePath + "constraint_2_power_limit_uw";
+    private const string PathTime0 = CpuBasePath + "constraint_0_time_window_us";
+    private const string PathTime1 = CpuBasePath + "constraint_0_time_window_us";
     private static long cpuMax;
     
     public PowerLimitMonitorService(PowerLimitState state)
@@ -28,17 +29,20 @@ public class PowerLimitMonitorService : BackgroundService
             try
             {
                 var targetLimitUw = (long)(cpuMax * (_state.TargetLimitPercent / 100.0));
-                var pl2Target = (long)(cpuMax * 1.6);
-                var current0 = long.Parse(await File.ReadAllTextAsync(PathLimit0, stoppingToken));
-                var current1 = long.Parse(await File.ReadAllTextAsync(PathLimit1, stoppingToken));
-                var current2 = long.Parse(await File.ReadAllTextAsync(PathLimit2, stoppingToken));
-                
-                if (current0 != targetLimitUw || current1 != targetLimitUw)
+                var targetTimeWindowUs = 976L;
+                var currentLimit0 = long.Parse(await File.ReadAllTextAsync(PathLimit0, stoppingToken));
+                var currentLimit1 = long.Parse(await File.ReadAllTextAsync(PathLimit1, stoppingToken));
+                var currentTimeWindow0 = long.Parse(await File.ReadAllTextAsync(PathTime0, stoppingToken));
+                var currentTimeWindow1 = long.Parse(await File.ReadAllTextAsync(PathTime1, stoppingToken));
+
+                if (currentLimit0 != targetLimitUw || currentLimit1 != targetLimitUw ||
+                    currentTimeWindow0 != targetTimeWindowUs || currentTimeWindow1 != targetTimeWindowUs) 
                 {
                     Console.WriteLine($"[Monitor]: Wykryto zmianę limitu. Przywracanie wartości: {targetLimitUw}");
                     await File.WriteAllTextAsync(PathLimit0, targetLimitUw.ToString(), stoppingToken);
                     await File.WriteAllTextAsync(PathLimit1, targetLimitUw.ToString(), stoppingToken);
-                    //await File.WriteAllTextAsync(PathLimit2, pl2Target.ToString(), stoppingToken);
+                    await File.WriteAllTextAsync(PathTime0, targetTimeWindowUs.ToString(), stoppingToken);
+                    await File.WriteAllTextAsync(PathTime1, targetTimeWindowUs.ToString(), stoppingToken);
                 }
             }
             catch (Exception ex)

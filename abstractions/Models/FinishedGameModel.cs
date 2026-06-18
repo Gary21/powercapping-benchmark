@@ -11,4 +11,6 @@ public class FinishedGameModel
     public string PowerCapColor { get; set; }
     public string Result { get; set; }
     public string EndgameType { get; set; }
+    public double WhiteAvgPower { get; set; }
+    public double BlackAvgPower { get; set; }
 }
