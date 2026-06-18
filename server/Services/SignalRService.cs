@@ -30,12 +30,11 @@ public class SignalRService(ClientSessionsStore clientSessionsStore, GameService
         return base.OnDisconnectedAsync(exception);
     }
     
-    public void MoveMade(string message)
+    public void MoveMade(SubmitMoveModel message)
     {
-        //var splittedMessage = message.Split(',');
-        //var moveMessage = splittedMessage[0];
-        //var avgPower = double.Parse(splittedMessage[1]);
-        Console.WriteLine($"[Hub] Move: {message} from: {Context.ConnectionId}");
+        var moveMessage = message.Move;
+        var avgPower = message.AvgPower;
+        Console.WriteLine($"[Hub] Move: {moveMessage} from: {Context.ConnectionId}");
         var timeElapsed = DateTime.UtcNow - gameService.GetGameState(Context.ConnectionId)!.LastMoveTimestamp;
         Console.WriteLine($"[Hub] Time elapsed since last move: {timeElapsed.TotalMilliseconds} milliseconds.");
         var opponentId = gameService.GetOpponent(Context.ConnectionId);
@@ -43,19 +42,21 @@ public class SignalRService(ClientSessionsStore clientSessionsStore, GameService
         var currentPlayerColor = gameState.Board.Turn.AsChar;
         if (currentPlayerColor == 'w')
         {
+            gameState.WhiteAvgPower = avgPower;
             gameState.WhiteTimeLeft -= (long)timeElapsed.TotalMilliseconds;
             gameState.WhiteTimeLeft += gameState.TimeIncrement;
         }
         else
         {
+            gameState.BlackAvgPower = avgPower;
             gameState.BlackTimeLeft -= (long)timeElapsed.TotalMilliseconds;
             gameState.BlackTimeLeft += gameState.TimeIncrement;
         }
         Console.WriteLine($"[Hub] Time left - White: {gameState.WhiteTimeLeft} ms, Black: {gameState.BlackTimeLeft} ms.");
-        var move = new Move(message[..2], message[2..4]);
+        var move = new Move(moveMessage[..2], moveMessage[2..4]);
         if(!gameState.Board.Move(move))
         {
-            Console.WriteLine($"[Hub] Move {message} is illegal.");
+            Console.WriteLine($"[Hub] Move {moveMessage} is illegal.");
         }
         if (gameState.Board.IsEndGame || gameState.WhiteTimeLeft <= 0 || gameState.BlackTimeLeft <= 0)
         {

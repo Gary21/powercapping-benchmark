@@ -30,7 +30,7 @@ public class EngineCommunication : IDisposable
         SetupEngine(isWhite, powerCapPercent, powerCapColor);
     }
     
-    public string MakeMove(MoveMadeModel moveMade)
+    public SubmitMoveModel MakeMove(MoveMadeModel moveMade)
     {
         string path = "/sys/class/powercap/intel-rapl/intel-rapl:0/energy_uj";
         Input.WriteLine($"position fen {moveMade.CurrentFen}");
@@ -72,12 +72,18 @@ public class EngineCommunication : IDisposable
                     totalEnergyUsed += energyJ;
                     totalTimeUsed += timeS;
                 }
-                var avgPowerW = totalEnergyUsed / totalTimeUsed;
+
+                var avgPowerW = totalTimeUsed != 0 ? totalEnergyUsed / totalTimeUsed : 0.0d;
                 Console.WriteLine("Average power: " + avgPowerW + " W");
                 var bestMove = line.Split(' ')[1];
                 Console.Write("Best move: " + bestMove + "\n");
                 Console.Write("Depth: " + depth + ", NPS: " + nps + ", Nodes: " + nodes + ", Score:" + score + "\n");
-                return bestMove;
+                var submitMove = new SubmitMoveModel
+                {
+                    Move = bestMove,
+                    AvgPower = avgPowerW
+                };
+                return submitMove;
             }
         }
     }

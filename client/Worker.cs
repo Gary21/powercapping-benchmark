@@ -54,16 +54,16 @@ public class Worker : BackgroundService
             engineHandler = _engineFactory.Create(isWhite, gameState.PowerCap, gameState.PowerCapColor);
             if (isWhite)
             {
-                var moves = engineHandler.MakeMove(new MoveMadeModel(gameState));
-                connection.SendAsync("MoveMade", moves, stoppingToken);
+                var submitMove = engineHandler.MakeMove(new MoveMadeModel(gameState));
+                connection.SendAsync("MoveMade", submitMove, stoppingToken);
             }
         });
         
         connection.On<MoveMadeModel>("MoveMade", moveMade =>
         {
             _logger.LogInformation("MoveMade Recieved");
-            var move = engineHandler.MakeMove(moveMade);
-            connection.SendAsync("MoveMade", $"{move}", stoppingToken);
+            var submitMove = engineHandler.MakeMove(moveMade);
+            connection.SendAsync("MoveMade", submitMove, stoppingToken);
         });
         
         connection.On("GameFinished", () =>

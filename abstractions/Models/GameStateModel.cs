@@ -17,4 +17,6 @@ public class GameStateModel
     public string BlackPlayer { get; set; }
     public ChessBoard Board { get; set; }
     public DateTime LastMoveTimestamp { get; set; }
+    public double WhiteAvgPower { get; set; }
+    public double BlackAvgPower { get; set; }
 }
