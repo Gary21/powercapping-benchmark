@@ -19,4 +19,6 @@ public class GameStateModel
     public DateTime LastMoveTimestamp { get; set; }
     public double WhiteAvgPower { get; set; }
     public double BlackAvgPower { get; set; }
+    public double WhiteAvgNps { get; set; }
+    public double BlackAvgNps { get; set; }
 }

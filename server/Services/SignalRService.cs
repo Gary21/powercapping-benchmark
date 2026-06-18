@@ -34,6 +34,7 @@ public class SignalRService(ClientSessionsStore clientSessionsStore, GameService
     {
         var moveMessage = message.Move;
         var avgPower = message.AvgPower;
+        var avgNps = message.AvgNps;
         Console.WriteLine($"[Hub] Move: {moveMessage} from: {Context.ConnectionId}");
         var timeElapsed = DateTime.UtcNow - gameService.GetGameState(Context.ConnectionId)!.LastMoveTimestamp;
         Console.WriteLine($"[Hub] Time elapsed since last move: {timeElapsed.TotalMilliseconds} milliseconds.");
@@ -42,12 +43,14 @@ public class SignalRService(ClientSessionsStore clientSessionsStore, GameService
         var currentPlayerColor = gameState.Board.Turn.AsChar;
         if (currentPlayerColor == 'w')
         {
+            gameState.WhiteAvgNps = avgNps;
             gameState.WhiteAvgPower = avgPower;
             gameState.WhiteTimeLeft -= (long)timeElapsed.TotalMilliseconds;
             gameState.WhiteTimeLeft += gameState.TimeIncrement;
         }
         else
         {
+            gameState.BlackAvgNps = avgNps;
             gameState.BlackAvgPower = avgPower;
             gameState.BlackTimeLeft -= (long)timeElapsed.TotalMilliseconds;
             gameState.BlackTimeLeft += gameState.TimeIncrement;
@@ -79,7 +82,7 @@ public class SignalRService(ClientSessionsStore clientSessionsStore, GameService
         }
     }
     
-    public string GetStockfishPositionCommand(ChessBoard board)
+    private string GetStockfishPositionCommand(ChessBoard board)
     {
         var uciMoves = board.ExecutedMoves.Select(m => 
         {

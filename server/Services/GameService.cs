@@ -77,7 +77,12 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
                 Result = winner,
                 EndgameType = gameState.Board.EndGame.EndgameType.ToString(),
                 WhiteAvgPower = gameState.WhiteAvgPower,
-                BlackAvgPower = gameState.BlackAvgPower
+                BlackAvgPower = gameState.BlackAvgPower,
+                TotalMoves = gameState.Board.ExecutedMoves.Count,
+                WhiteTimeLeft = gameState.WhiteTimeLeft,
+                BlackTimeLeft = gameState.BlackTimeLeft,
+                WhiteAvgNps = gameState.WhiteAvgNps,
+                BlackAvgNps = gameState.BlackAvgNps
             };
             databaseHandler.InsertResult(finishedGame);
         }

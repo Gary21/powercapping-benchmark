@@ -13,4 +13,9 @@ public class FinishedGameModel
     public string EndgameType { get; set; }
     public double WhiteAvgPower { get; set; }
     public double BlackAvgPower { get; set; }
+    public int TotalMoves { get; set; }
+    public double WhiteTimeLeft { get; set; }
+    public double BlackTimeLeft { get; set; }
+    public double WhiteAvgNps { get; set; }
+    public double BlackAvgNps { get; set; }
 }

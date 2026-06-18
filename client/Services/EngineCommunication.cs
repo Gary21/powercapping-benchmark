@@ -10,6 +10,7 @@ public class EngineCommunication : IDisposable
     public readonly StreamReader Output;
     private double totalEnergyUsed = 0;
     private double totalTimeUsed = 0;
+    private List<int> _npsHistory = [];
     private PowerLimitState _powerState;
     
 
@@ -66,6 +67,7 @@ public class EngineCommunication : IDisposable
                 var energyJ = (finishUj - startUj) / 1_000_000.0;
                 var timeS = watch.ElapsedMilliseconds / 1000.0;
                 var powerW = energyJ / timeS;
+                _npsHistory.Add(Int32.Parse(nps));
                 Console.WriteLine(powerW + " W");
                 if (energyJ > 0)
                 {
@@ -81,7 +83,8 @@ public class EngineCommunication : IDisposable
                 var submitMove = new SubmitMoveModel
                 {
                     Move = bestMove,
-                    AvgPower = avgPowerW
+                    AvgPower = avgPowerW,
+                    AvgNps = _npsHistory.Average()
                 };
                 return submitMove;
             }
