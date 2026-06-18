@@ -13,7 +13,7 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
     private PeriodicTimer timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
     private const string StartingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     
-    public async Task InitGame(NewGameModel newGame)
+    public async Task InitGame(NewGameModel newGame, CancellationToken token)
     {
             var (player1, player2) = await FindTwoPlayers();
             Console.WriteLine($"Starting game {newGame.GameId} between {player1} and {player2}");
@@ -129,6 +129,14 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
             }
         }
         return null;
+    }
+    
+    public async Task<int> GetIdlePlayersCount()
+    {
+        var idlePlayers = _clientSessions
+            .Where(kvp => kvp.Value.IsIdle)
+            .ToList();
+        return idlePlayers.Count;
     }
     
     private async Task<(string,string)> FindTwoPlayers()

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.SignalR;
 using server.Models;
 using server.Services;
 using server.Stores;
@@ -12,6 +11,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<GameService>();
 builder.Services.AddSingleton<ClientSessionsStore>();
 builder.Services.AddSingleton<DatabaseHandler>();
+builder.Services.AddHostedService<GameSchedulerService>();
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
 builder.Services.AddCors(options =>
 {
@@ -35,36 +35,20 @@ app.UseHttpsRedirection();
 app.MapHub<SignalRService>("/chessHub");
 app.MapGet("/ping", async (GameService gameService) =>
 {
-    await gameService.Ping("dupa");
+    await gameService.Ping("awesome-ping-text:)");
     return Results.Ok(new { ok = true });
 });
-app.MapGet("/newGame", async (GameService gameService, int timeControl, int timeIncrement, int powerCapPercent, int noOfGamesPerSide, string initialPosition) =>
+app.MapGet("/scheduleGames", async (DatabaseHandler dbHandler, int timeControl, int timeIncrement, int powerCapPercent, int noOfGamesPerSide) =>
 {
-    for (int i = 0; i < noOfGamesPerSide; i++)
+    var newScheduledGames = new GamesScheduledModel
     {
-        var newGame = new NewGameModel
-        {
-            GameId = Guid.NewGuid().ToString(),
-            Engine = "stockfish",
-            PowerCap = powerCapPercent,
-            TimeControl = timeControl,
-            TimeIncrement = timeIncrement,
-            PowerCapColor = "white",
-            InitialMoves = ""
-        };
-        await gameService.InitGame(newGame);
-        newGame = new NewGameModel
-        {
-            GameId = Guid.NewGuid().ToString(),
-            Engine = "stockfish",
-            PowerCap = powerCapPercent,
-            TimeControl = timeControl,
-            TimeIncrement = timeIncrement,
-            PowerCapColor = "black",
-            InitialMoves = ""
-        };
-        await gameService.InitGame(newGame);
-    }
+        Id = Guid.NewGuid().ToString(),
+        NumberOfGamesPerSide = noOfGamesPerSide,
+        TimeControl = timeControl,
+        TimeIncrement = timeIncrement,
+        PowerCap = powerCapPercent
+    };
+    dbHandler.ScheduleGames(newScheduledGames);
     return Results.Ok(new { ok = true });
 });
 
