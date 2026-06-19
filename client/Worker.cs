@@ -79,7 +79,23 @@ public class Worker : BackgroundService
 
         try
         {
-            await Task.Delay(Timeout.Infinite, stoppingToken);
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                if (connection.State == HubConnectionState.Disconnected)
+                {
+                    try
+                    {
+                        _logger.LogInformation("Connecting to: {ip}", HubUrl);
+                        await connection.StartAsync(stoppingToken);
+                        _logger.LogInformation("SignalR connected. ConnectionId={id}", connection.ConnectionId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("Connection failed/lost. Retrying in 5 seconds...");
+                    }
+                }
+                await Task.Delay(5000, stoppingToken);
+            }
         }
         finally
         {

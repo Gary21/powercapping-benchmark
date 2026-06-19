@@ -62,31 +62,40 @@ public class EngineCommunication : IDisposable
             }
             else if (line.StartsWith("bestmove"))
             {
-                var finishUj = long.Parse(File.ReadAllText(path));
-                watch.Stop();
-                var energyJ = (finishUj - startUj) / 1_000_000.0;
-                var timeS = watch.ElapsedMilliseconds / 1000.0;
-                var powerW = energyJ / timeS;
-                _npsHistory.Add(Int32.Parse(nps));
-                Console.WriteLine(powerW + " W");
-                if (energyJ > 0)
+                try
                 {
-                    totalEnergyUsed += energyJ;
-                    totalTimeUsed += timeS;
-                }
+                    var finishUj = long.Parse(File.ReadAllText(path));
+                    watch.Stop();
+                    var energyJ = (finishUj - startUj) / 1_000_000.0;
+                    var timeS = watch.ElapsedMilliseconds / 1000.0;
+                    var powerW = timeS != 0 ? energyJ / timeS : 0.0d;
+                    _npsHistory.Add(Int32.Parse(nps));
+                    Console.WriteLine(powerW + " W");
+                    if (energyJ > 0)
+                    {
+                        totalEnergyUsed += energyJ;
+                        totalTimeUsed += timeS;
+                    }
 
-                var avgPowerW = totalTimeUsed != 0 ? totalEnergyUsed / totalTimeUsed : 0.0d;
-                Console.WriteLine("Average power: " + avgPowerW + " W");
-                var bestMove = line.Split(' ')[1];
-                Console.Write("Best move: " + bestMove + "\n");
-                Console.Write("Depth: " + depth + ", NPS: " + nps + ", Nodes: " + nodes + ", Score:" + score + "\n");
-                var submitMove = new SubmitMoveModel
+                    var avgPowerW = totalTimeUsed != 0 ? totalEnergyUsed / totalTimeUsed : 0.0d;
+                    Console.WriteLine("Average power: " + avgPowerW + " W");
+                    var bestMove = line.Split(' ')[1];
+                    Console.Write("Best move: " + bestMove + "\n");
+                    Console.Write("Depth: " + depth + ", NPS: " + nps + ", Nodes: " + nodes + ", Score:" + score +
+                                  "\n");
+                    var submitMove = new SubmitMoveModel
+                    {
+                        Move = bestMove,
+                        AvgPower = avgPowerW,
+                        AvgNps = _npsHistory.Average()
+                    };
+                    return submitMove;
+                }
+                catch (Exception e)
                 {
-                    Move = bestMove,
-                    AvgPower = avgPowerW,
-                    AvgNps = _npsHistory.Average()
-                };
-                return submitMove;
+                    Console.WriteLine(e);
+                    throw;
+                }
             }
         }
     }
