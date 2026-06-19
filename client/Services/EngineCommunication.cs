@@ -69,7 +69,10 @@ public class EngineCommunication : IDisposable
                     var energyJ = (finishUj - startUj) / 1_000_000.0;
                     var timeS = watch.ElapsedMilliseconds / 1000.0;
                     var powerW = timeS != 0 ? energyJ / timeS : 0.0d;
-                    _npsHistory.Add(Int32.Parse(nps));
+                    var npsInt = 0;
+                    Int32.TryParse(nps, out npsInt);
+                    if(npsInt > 0 )
+                        _npsHistory.Add(npsInt);
                     Console.WriteLine(powerW + " W");
                     if (energyJ > 0)
                     {
@@ -87,7 +90,7 @@ public class EngineCommunication : IDisposable
                     {
                         Move = bestMove,
                         AvgPower = avgPowerW,
-                        AvgNps = _npsHistory.Average()
+                        AvgNps = _npsHistory.Count > 0 ? _npsHistory.Average() : 0.0d
                     };
                     return submitMove;
                 }

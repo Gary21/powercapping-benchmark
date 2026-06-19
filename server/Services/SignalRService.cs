@@ -81,7 +81,7 @@ public class SignalRService(ClientSessionsStore clientSessionsStore, GameService
                     BlackTimeLeft = gameState.BlackTimeLeft,
                     Increment = gameState.TimeIncrement
                 });
-        }
+            }
         }
         catch (Exception e)
         {
