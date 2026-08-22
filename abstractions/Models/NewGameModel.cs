@@ -9,4 +9,5 @@ public class NewGameModel
     public long TimeIncrement { get; set; } // MS
     public string InitialMoves { get; set; }
     public string PowerCapColor { get; set; }
+    public bool IsGpu { get; set; }
 }

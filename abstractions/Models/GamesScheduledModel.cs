@@ -10,4 +10,5 @@ public class GamesScheduledModel
     public int TimeIncrement { get; set; }
     public int PowerCap { get; set; }
     public int NumberOfGamesPerSide { get; set; }
+    public bool IsGpu { get; set; }
 }

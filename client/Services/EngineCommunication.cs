@@ -12,14 +12,18 @@ public class EngineCommunication : IDisposable
     private double totalTimeUsed = 0;
     private List<int> _npsHistory = [];
     private PowerLimitState _powerState;
+    private EnergyMeasurementService _energyMeasurementService;
     
 
-    public EngineCommunication(bool isWhite, int powerCapPercent, string powerCapColor, PowerLimitState powerState)
+    public EngineCommunication(bool isWhite, int powerCapPercent, string powerCapColor, PowerLimitState powerState, bool isGpu, EnergyMeasurementService energyMeasurementService)
     {
+        _energyMeasurementService = energyMeasurementService;
         _powerState = powerState;
+        _powerState.isGpu = isGpu;
+        var enginePath = isGpu ? "engines/lc0" : "engines/stockfish";
         var psi = new ProcessStartInfo
         {
-            FileName = "engines/stockfish",
+            FileName = enginePath,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             UseShellExecute = false,
@@ -33,7 +37,6 @@ public class EngineCommunication : IDisposable
     
     public SubmitMoveModel MakeMove(MoveMadeModel moveMade)
     {
-        string path = "/sys/class/powercap/intel-rapl/intel-rapl:0/energy_uj";
         Input.WriteLine(moveMade.CurrentMoves);
         WaitForReady();
         string nps = "";
@@ -42,32 +45,32 @@ public class EngineCommunication : IDisposable
         string score = "";
         var moveCommand =
             $"go wtime {moveMade.WhiteTimeLeft} btime {moveMade.BlackTimeLeft} winc {moveMade.Increment} binc {moveMade.Increment}";
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        var startUj = long.Parse(File.ReadAllText(path));
+        if (_powerState.isGpu)
+        {
+            _energyMeasurementService.StartGpuPowerMeasurement();
+        }
+        else
+        {
+            _energyMeasurementService.StartCpuPowerMeasurement();
+        }
         Input.WriteLine(moveCommand);
         while (true)
         {
             var line = Output.ReadLine();
-            Console.WriteLine($"[Stockfish]: {line}");
+            Console.WriteLine($"[Engine]: {line}");
             if(line.StartsWith("info"))
             {
                 var values =  line.Split(' ');
                 if (values.Length > 13)
                 {
-                    depth = values[2];
-                    nps = values[13];
-                    nodes = values[11];
-                    score = values[9];
+                    (depth, nps, nodes, score) = ParseInfoLine(values);
                 }
             }
             else if (line.StartsWith("bestmove"))
             {
                 try
                 {
-                    var finishUj = long.Parse(File.ReadAllText(path));
-                    watch.Stop();
-                    var energyJ = (finishUj - startUj) / 1_000_000.0;
-                    var timeS = watch.ElapsedMilliseconds / 1000.0;
+                    var (energyJ, timeS) = _powerState.isGpu ? _energyMeasurementService.GetGpuEnergyUsed() : _energyMeasurementService.GetCpuEnergyUsed();
                     var powerW = timeS != 0 ? energyJ / timeS : 0.0d;
                     var npsInt = 0;
                     Int32.TryParse(nps, out npsInt);
@@ -117,9 +120,14 @@ public class EngineCommunication : IDisposable
             _powerState.TargetLimitPercent = 100;
             Thread.Sleep(100);
         }
-        Input.WriteLine("setoption name Clear Hash");
-        Input.WriteLine("setoption name Threads value 24");
-        Input.WriteLine("setoption name Hash value 2048");
+        
+        if (!_powerState.isGpu)
+        {
+            Input.WriteLine("setoption name Clear Hash");
+            Input.WriteLine("setoption name Threads value 22");
+            Input.WriteLine("setoption name Hash value 2048");
+        }
+        //Input.WriteLine("setoption name MultiPV value 3");
         Input.WriteLine("ucinewgame");
         WaitForReady();
     }
@@ -128,6 +136,28 @@ public class EngineCommunication : IDisposable
     {
         Input.WriteLine("isready");
         while (Output.ReadLine() != "readyok") { }
+    }
+    private (string,string,string,string) ParseInfoLine(string[] values)
+    {
+        string nps = "";
+        string depth = "";
+        string nodes = "";
+        string score = "";
+        if (!_powerState.isGpu)
+        {
+            depth = values[2];
+            nps = values[13];
+            nodes = values[11];
+            score = values[9];
+        }
+        else
+        {
+            depth = values[2];
+            nps = values[13];
+            nodes = values[8];
+            score = values[11];
+        }
+        return (depth, nps, nodes, score);
     }
     
     public void Dispose()

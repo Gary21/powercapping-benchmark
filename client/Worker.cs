@@ -8,7 +8,7 @@ public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
     private readonly IEngineCommunicationFactory _engineFactory;
-    private const string HubUrl = "http://des07.kask:5000/chessHub";
+    private const string HubUrl = "http://des06:5000/chessHub";
     private EngineCommunication engineHandler;
 
     public Worker(ILogger<Worker> logger, IEngineCommunicationFactory engineFactory)
@@ -51,7 +51,8 @@ public class Worker : BackgroundService
         connection.On<NewGameModel, bool>("GameStarted", (gameState,isWhite) =>
         {
             _logger.LogInformation("GameStarted Recieved");
-            engineHandler = _engineFactory.Create(isWhite, gameState.PowerCap, gameState.PowerCapColor);
+            _logger.LogInformation($"IsGpu: {gameState.IsGpu}");
+            engineHandler = _engineFactory.Create(isWhite, gameState.PowerCap, gameState.PowerCapColor, gameState.IsGpu);
             if (isWhite)
             {
                 var submitMove = engineHandler.MakeMove(new MoveMadeModel(gameState));

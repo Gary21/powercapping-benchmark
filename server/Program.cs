@@ -38,7 +38,7 @@ app.MapGet("/ping", async (GameService gameService) =>
     await gameService.Ping("awesome-ping-text:)");
     return Results.Ok(new { ok = true });
 });
-app.MapGet("/scheduleGames", async (DatabaseHandler dbHandler, int timeControl, int timeIncrement, int powerCapPercent, int noOfGamesPerSide) =>
+app.MapGet("/scheduleGames", async (DatabaseHandler dbHandler, int timeControl, int timeIncrement, int powerCapPercent, int noOfGamesPerSide, bool isGpu) =>
 {
     var newScheduledGames = new GamesScheduledModel
     {
@@ -46,7 +46,8 @@ app.MapGet("/scheduleGames", async (DatabaseHandler dbHandler, int timeControl, 
         NumberOfGamesPerSide = noOfGamesPerSide,
         TimeControl = timeControl,
         TimeIncrement = timeIncrement,
-        PowerCap = powerCapPercent
+        PowerCap = powerCapPercent,
+        IsGpu = isGpu
     };
     dbHandler.ScheduleGames(newScheduledGames);
     return Results.Ok(new { ok = true });

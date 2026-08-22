@@ -18,4 +18,5 @@ public class FinishedGameModel
     public double BlackTimeLeft { get; set; }
     public double WhiteAvgNps { get; set; }
     public double BlackAvgNps { get; set; }
+    public bool IsGpu { get; set; }
 }

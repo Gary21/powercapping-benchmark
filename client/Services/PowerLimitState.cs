@@ -3,4 +3,5 @@
 public class PowerLimitState
 {
     public long TargetLimitPercent { get; set; } = -1;
+    public bool isGpu { get; set; } = false;
 }

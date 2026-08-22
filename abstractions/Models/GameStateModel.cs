@@ -21,4 +21,5 @@ public class GameStateModel
     public double BlackAvgPower { get; set; }
     public double WhiteAvgNps { get; set; }
     public double BlackAvgNps { get; set; }
+    public bool IsGpu { get; set; }
 }

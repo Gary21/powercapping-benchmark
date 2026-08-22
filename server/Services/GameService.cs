@@ -31,7 +31,8 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
                 WhitePlayer = player1,
                 BlackPlayer = player2,
                 Board = ChessBoard.LoadFromFen(StartingFen, AutoEndgameRules.All),
-                InitialMoves = newGame.InitialMoves
+                InitialMoves = newGame.InitialMoves,
+                IsGpu = newGame.IsGpu
             };
             _games.TryAdd(currentState.GameId, currentState);
             currentState.LastMoveTimestamp = DateTime.UtcNow;
@@ -82,7 +83,8 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
                 WhiteTimeLeft = gameState.WhiteTimeLeft,
                 BlackTimeLeft = gameState.BlackTimeLeft,
                 WhiteAvgNps = gameState.WhiteAvgNps,
-                BlackAvgNps = gameState.BlackAvgNps
+                BlackAvgNps = gameState.BlackAvgNps,
+                IsGpu = gameState.IsGpu
             };
             databaseHandler.InsertResult(finishedGame);
         }
