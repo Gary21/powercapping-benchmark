@@ -9,7 +9,7 @@ public class PowerLimitMonitorService : BackgroundService
     private const string PathLimit0 = CpuBasePath + "constraint_0_power_limit_uw";
     private const string PathLimit1 = CpuBasePath + "constraint_1_power_limit_uw";
     private const string PathTime0 = CpuBasePath + "constraint_0_time_window_us";
-    private const string PathTime1 = CpuBasePath + "constraint_0_time_window_us";
+    private const string PathTime1 = CpuBasePath + "constraint_1_time_window_us";
     private static long cpuMax;
     private static long gpuMin;
     private static long gpuMax;

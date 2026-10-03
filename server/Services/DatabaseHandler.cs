@@ -25,7 +25,9 @@ public class DatabaseHandler
         var existing = _db.Table<GamesScheduledModel>().FirstOrDefault(r =>
             r.TimeControl == newScheduledGames.TimeControl &&
             r.TimeIncrement == newScheduledGames.TimeIncrement &&
-            r.PowerCap == newScheduledGames.PowerCap);
+            r.PowerCap == newScheduledGames.PowerCap &&
+            r.IsGpu == newScheduledGames.IsGpu &&
+            r.InitialMoves == newScheduledGames.InitialMoves);
         if (existing != null)
         {
             existing.NumberOfGamesPerSide += newScheduledGames.NumberOfGamesPerSide;

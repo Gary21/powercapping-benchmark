@@ -8,7 +8,7 @@ public class EnergyMeasurementService
     private const string CpuEnergyPath = CpuBasePath + "energy_uj";
     private Stopwatch watch = null;
     private ulong gpuStartEnergy = 0;
-    private ulong cpuStartEnergy = 0;
+    private long cpuStartEnergy = 0;
     
     public EnergyMeasurementService()
     {
@@ -25,7 +25,7 @@ public class EnergyMeasurementService
     {
         var currentEnergy = NvmlProxy.GetEnergyMilliJoules(0);
         watch.Stop();
-        var energyUsed = (currentEnergy - gpuStartEnergy) / 1000.0d; // uJ is consistent with cpu
+        var energyUsed = (currentEnergy - gpuStartEnergy) / 1000.0d;
         var timeUsed = watch.Elapsed.TotalSeconds;
         return (energyUsed, timeUsed);
     }
@@ -33,14 +33,14 @@ public class EnergyMeasurementService
     public void StartCpuPowerMeasurement()
     {
         watch = Stopwatch.StartNew();
-        cpuStartEnergy = ulong.Parse(File.ReadAllText(CpuEnergyPath));
+        cpuStartEnergy = long.Parse(File.ReadAllText(CpuEnergyPath));
     }
     
     public (double, double) GetCpuEnergyUsed()
     {
-        var currentEnergy = ulong.Parse(File.ReadAllText(CpuEnergyPath));
+        var currentEnergy = long.Parse(File.ReadAllText(CpuEnergyPath));
         watch.Stop();
-        var energyUsed = (currentEnergy - cpuStartEnergy) * 1.0d;
+        var energyUsed = (currentEnergy - cpuStartEnergy) / 1_000_000.0;
         var timeUsed = watch.Elapsed.TotalSeconds;
         return (energyUsed, timeUsed);
     }

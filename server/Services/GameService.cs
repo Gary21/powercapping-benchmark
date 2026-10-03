@@ -18,6 +18,7 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
             var (player1, player2) = await FindTwoPlayers();
             Console.WriteLine($"Starting game {newGame.GameId} between {player1} and {player2}");
             AlignGameToClients(newGame.GameId, [player1, player2]);
+            var initialFen = FenConverter.MovesToFen(newGame.InitialMoves);
             var currentState = new GameStateModel
             {
                 GameId = newGame.GameId,
@@ -30,7 +31,7 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
                 PowerCapColor = newGame.PowerCapColor,
                 WhitePlayer = player1,
                 BlackPlayer = player2,
-                Board = ChessBoard.LoadFromFen(StartingFen, AutoEndgameRules.All),
+                Board = ChessBoard.LoadFromFen(initialFen, AutoEndgameRules.All),
                 InitialMoves = newGame.InitialMoves,
                 IsGpu = newGame.IsGpu
             };
@@ -84,7 +85,8 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
                 BlackTimeLeft = gameState.BlackTimeLeft,
                 WhiteAvgNps = gameState.WhiteAvgNps,
                 BlackAvgNps = gameState.BlackAvgNps,
-                IsGpu = gameState.IsGpu
+                IsGpu = gameState.IsGpu,
+                Moves = GetStockfishPositionCommand(gameState)
             };
             databaseHandler.InsertResult(finishedGame);
         }
@@ -178,6 +180,25 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
             _clientSessions[clientId].GameId = null;
             hub.Groups.RemoveFromGroupAsync(clientId, gameId);
         }
+    }
+    
+    private string GetStockfishPositionCommand(GameStateModel gameState)
+    {
+        var board = gameState.Board;
+        var uciMoves = board.ExecutedMoves.Select(m => 
+        {
+            string moveString = $"{m.OriginalPosition.ToString().ToLower()}{m.NewPosition.ToString().ToLower()}";
+            
+            if (m.Promotion != null)
+            {
+                moveString += m.Promotion.Type.AsChar;
+            }
+        
+            return moveString;
+        });
+        var movesString = string.Join(" ", uciMoves);
+
+        return movesString;
     }
     
     public async Task Ping(string message)

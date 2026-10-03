@@ -124,8 +124,12 @@ public class EngineCommunication : IDisposable
         if (!_powerState.isGpu)
         {
             Input.WriteLine("setoption name Clear Hash");
-            Input.WriteLine("setoption name Threads value 22");
+            Input.WriteLine("setoption name Threads value 12");
             Input.WriteLine("setoption name Hash value 2048");
+        }
+        else
+        {
+            Input.WriteLine("setoption name Contempt value 0.5");
         }
         //Input.WriteLine("setoption name MultiPV value 3");
         Input.WriteLine("ucinewgame");

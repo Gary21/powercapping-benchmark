@@ -11,4 +11,5 @@ public class GamesScheduledModel
     public int PowerCap { get; set; }
     public int NumberOfGamesPerSide { get; set; }
     public bool IsGpu { get; set; }
+    public string InitialMoves { get; set; } = "";
 }

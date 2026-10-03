@@ -30,7 +30,7 @@ public class GameSchedulerService(DatabaseHandler dbHandler, GameService gameSer
                 TimeControl = newGameSettings.TimeControl,
                 TimeIncrement = newGameSettings.TimeIncrement,
                 PowerCapColor = "white",
-                InitialMoves = "",
+                InitialMoves = newGameSettings.InitialMoves,
                 IsGpu = newGameSettings.IsGpu
             };
             await gameService.InitGame(newGame, stoppingToken);
@@ -42,7 +42,7 @@ public class GameSchedulerService(DatabaseHandler dbHandler, GameService gameSer
                 TimeControl = newGameSettings.TimeControl,
                 TimeIncrement = newGameSettings.TimeIncrement,
                 PowerCapColor = "black",
-                InitialMoves = "",
+                InitialMoves = newGameSettings.InitialMoves,
                 IsGpu = newGameSettings.IsGpu
             };
             await gameService.InitGame(newGame, stoppingToken);

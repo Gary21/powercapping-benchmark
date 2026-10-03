@@ -76,7 +76,7 @@ public class SignalRService(ClientSessionsStore clientSessionsStore, GameService
                 Clients.Client(opponentId).MoveMade(new MoveMadeModel
                 {
                     GameId = _clientSessions[Context.ConnectionId].GameId!,
-                    CurrentMoves = GetStockfishPositionCommand(gameState.Board),
+                    CurrentMoves = GetStockfishPositionCommand(gameState),
                     WhiteTimeLeft = gameState.WhiteTimeLeft,
                     BlackTimeLeft = gameState.BlackTimeLeft,
                     Increment = gameState.TimeIncrement
@@ -91,8 +91,9 @@ public class SignalRService(ClientSessionsStore clientSessionsStore, GameService
         
     }
     
-    private string GetStockfishPositionCommand(ChessBoard board)
+    private string GetStockfishPositionCommand(GameStateModel gameState)
     {
+        var board = gameState.Board;
         var uciMoves = board.ExecutedMoves.Select(m => 
         {
             string moveString = $"{m.OriginalPosition.ToString().ToLower()}{m.NewPosition.ToString().ToLower()}";
@@ -104,14 +105,14 @@ public class SignalRService(ClientSessionsStore clientSessionsStore, GameService
         
             return moveString;
         });
-        
-        string movesString = string.Join(" ", uciMoves);
+        var initialMoves = gameState.InitialMoves;
+        var movesString = string.Join(" ", uciMoves);
         
         if (string.IsNullOrEmpty(movesString))
         {
             return "position startpos";
         }
 
-        return $"position startpos moves {movesString}";
+        return $"position startpos moves {initialMoves} {movesString}";
     }
 }

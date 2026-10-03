@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "client", "client\client.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "abstractions", "abstractions\abstractions.csproj", "{947CC0E6-468F-4868-8082-24B441ED1BED}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "generoanie-pozycji", "generoanie-pozycji\generoanie-pozycji.csproj", "{BFE396D1-8523-461B-B5B6-67109B23FC3C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{947CC0E6-468F-4868-8082-24B441ED1BED}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{947CC0E6-468F-4868-8082-24B441ED1BED}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{947CC0E6-468F-4868-8082-24B441ED1BED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BFE396D1-8523-461B-B5B6-67109B23FC3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BFE396D1-8523-461B-B5B6-67109B23FC3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BFE396D1-8523-461B-B5B6-67109B23FC3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BFE396D1-8523-461B-B5B6-67109B23FC3C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
