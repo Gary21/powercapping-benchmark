@@ -47,23 +47,31 @@ public class SignalRService(ClientSessionsStore clientSessionsStore, GameService
             {
                 gameState.WhiteAvgNps = avgNps;
                 gameState.WhiteAvgPower = avgPower;
-                gameState.WhiteTimeLeft -= (long)timeElapsed.TotalMilliseconds;
-                gameState.WhiteTimeLeft += gameState.TimeIncrement;
+                if (gameState.UsesClock)
+                {
+                    gameState.WhiteTimeLeft -= (long)timeElapsed.TotalMilliseconds;
+                    gameState.WhiteTimeLeft += gameState.TimeIncrement;
+                }
             }
             else
             {
                 gameState.BlackAvgNps = avgNps;
                 gameState.BlackAvgPower = avgPower;
-                gameState.BlackTimeLeft -= (long)timeElapsed.TotalMilliseconds;
-                gameState.BlackTimeLeft += gameState.TimeIncrement;
+                if (gameState.UsesClock)
+                {
+                    gameState.BlackTimeLeft -= (long)timeElapsed.TotalMilliseconds;
+                    gameState.BlackTimeLeft += gameState.TimeIncrement;
+                }
             }
-            Console.WriteLine($"[Hub] Time left - White: {gameState.WhiteTimeLeft} ms, Black: {gameState.BlackTimeLeft} ms.");
+            if (gameState.UsesClock)
+                Console.WriteLine($"[Hub] Time left - White: {gameState.WhiteTimeLeft} ms, Black: {gameState.BlackTimeLeft} ms.");
             var move = new Move(moveMessage[..2], moveMessage[2..4]);
             if(!gameState.Board.Move(move))
             {
                 Console.WriteLine($"[Hub] Move {moveMessage} is illegal.");
             }
-            if (gameState.Board.IsEndGame || gameState.WhiteTimeLeft <= 0 || gameState.BlackTimeLeft <= 0)
+            // the clocks are 0 without a clock mode, so they must not be checked there or every game would end after one move
+            if (gameState.Board.IsEndGame || (gameState.UsesClock && (gameState.WhiteTimeLeft <= 0 || gameState.BlackTimeLeft <= 0)))
             {
                 gameService.FinishGame(_clientSessions[Context.ConnectionId].GameId!);
                 return;

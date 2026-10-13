@@ -1,8 +1,10 @@
-﻿namespace client.Services;
+﻿using server.Models;
+
+namespace client.Services;
 
 public interface IEngineCommunicationFactory
 {
-    EngineCommunication Create(bool isWhite, int powerCapPercent, string powerCapColor, bool isGpu);
+    EngineCommunication Create(bool isWhite, NewGameModel game);
 }
 
 public class EngineCommunicationFactory : IEngineCommunicationFactory
@@ -16,8 +18,8 @@ public class EngineCommunicationFactory : IEngineCommunicationFactory
         _energyMeasurementService = energyMeasurementService;
     }
 
-    public EngineCommunication Create(bool isWhite, int powerCapPercent, string powerCapColor, bool isGpu)
+    public EngineCommunication Create(bool isWhite, NewGameModel game)
     {
-        return new EngineCommunication(isWhite, powerCapPercent, powerCapColor, _state, isGpu, _energyMeasurementService);
+        return new EngineCommunication(isWhite, game, _state, _energyMeasurementService);
     }
 }

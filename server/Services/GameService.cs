@@ -15,6 +15,12 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
     
     public async Task InitGame(NewGameModel newGame, CancellationToken token)
     {
+            // throws on an unknown mode before any player is taken; from here on the game state always holds a valid mode
+            var limitMode = LimitModes.Normalize(newGame.LimitMode);
+            newGame.LimitMode = limitMode;
+            if (!LimitModes.HasValidLimits(limitMode, newGame.TimeControl, newGame.TimeIncrement, newGame.TimePerMove, newGame.NodesPerMove))
+                throw new ArgumentException($"Missing or invalid limit for mode '{limitMode}' (game {newGame.GameId}).", nameof(newGame));
+            var usesClock = LimitModes.UsesClock(limitMode);
             var (player1, player2) = await FindTwoPlayers();
             Console.WriteLine($"Starting game {newGame.GameId} between {player1} and {player2}");
             AlignGameToClients(newGame.GameId, [player1, player2]);
@@ -22,12 +28,15 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
             var currentState = new GameStateModel
             {
                 GameId = newGame.GameId,
-                WhiteTimeLeft = newGame.TimeControl,
-                BlackTimeLeft = newGame.TimeControl,
+                WhiteTimeLeft = usesClock ? newGame.TimeControl : 0,
+                BlackTimeLeft = usesClock ? newGame.TimeControl : 0,
                 Engine = newGame.Engine,
                 PowerCap = newGame.PowerCap,
-                TimeControl = newGame.TimeControl,
-                TimeIncrement = newGame.TimeIncrement,
+                LimitMode = limitMode,
+                TimeControl = usesClock ? newGame.TimeControl : 0,
+                TimeIncrement = usesClock ? newGame.TimeIncrement : 0,
+                TimePerMove = newGame.TimePerMove,
+                NodesPerMove = newGame.NodesPerMove,
                 PowerCapColor = newGame.PowerCapColor,
                 WhitePlayer = player1,
                 BlackPlayer = player2,
@@ -40,7 +49,12 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
             await hub.Clients.Clients(player1).GameStarted(newGame, true);
             await hub.Clients.Clients(player2).GameStarted(newGame, false);
             Console.WriteLine($"[Hub] Game starting...\n");
-            Console.WriteLine($"[Hub] Time left - White: {currentState.WhiteTimeLeft} ms, Black: {currentState.BlackTimeLeft} ms.");
+            Console.WriteLine(limitMode switch
+            {
+                LimitModes.TimePerMove => $"[Hub] Limit: {currentState.TimePerMove} ms per move (no clock).",
+                LimitModes.NodesPerMove => $"[Hub] Limit: {currentState.NodesPerMove} nodes per move (no clock).",
+                _ => $"[Hub] Time left - White: {currentState.WhiteTimeLeft} ms, Black: {currentState.BlackTimeLeft} ms."
+            });
             Console.WriteLine($"[Hub] Current position: \n{currentState.Board.ToAscii()}\n");
     }
     
@@ -52,11 +66,12 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
             await hub.Clients.Group(GameId).GameFinished();
             FreeClientsFromGame(gameState.GameId, [gameState.WhitePlayer, gameState.BlackPlayer]);
             string winner;
-            if (gameState.WhiteTimeLeft <= 0)
+            // without a clock (time_per_move / nodes_per_move) nobody can lose on time
+            if (gameState.UsesClock && gameState.WhiteTimeLeft <= 0)
             {
                 winner = "b";
             }
-            else if (gameState.BlackTimeLeft <= 0)
+            else if (gameState.UsesClock && gameState.BlackTimeLeft <= 0)
             {
                 winner = "w";
             }
@@ -72,8 +87,11 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
                 GameId = gameState.GameId,
                 Engine = gameState.Engine,
                 PowerCap = gameState.PowerCap,
-                TimeControl = gameState.TimeControl,
-                TimeIncrement = gameState.TimeIncrement,
+                LimitMode = gameState.LimitMode,
+                TimeControl = gameState.UsesClock ? gameState.TimeControl : null,
+                TimeIncrement = gameState.UsesClock ? gameState.TimeIncrement : null,
+                TimePerMove = gameState.TimePerMove,
+                NodesPerMove = gameState.NodesPerMove,
                 InitialPosition = gameState.InitialMoves,
                 PowerCapColor = gameState.PowerCapColor,
                 Result = winner,
@@ -81,8 +99,8 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
                 WhiteAvgPower = gameState.WhiteAvgPower,
                 BlackAvgPower = gameState.BlackAvgPower,
                 TotalMoves = gameState.Board.ExecutedMoves.Count,
-                WhiteTimeLeft = gameState.WhiteTimeLeft,
-                BlackTimeLeft = gameState.BlackTimeLeft,
+                WhiteTimeLeft = gameState.UsesClock ? gameState.WhiteTimeLeft : null,
+                BlackTimeLeft = gameState.UsesClock ? gameState.BlackTimeLeft : null,
                 WhiteAvgNps = gameState.WhiteAvgNps,
                 BlackAvgNps = gameState.BlackAvgNps,
                 IsGpu = gameState.IsGpu,

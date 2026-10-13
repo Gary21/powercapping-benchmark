@@ -52,7 +52,8 @@ public class Worker : BackgroundService
         {
             _logger.LogInformation("GameStarted Recieved");
             _logger.LogInformation($"IsGpu: {gameState.IsGpu}");
-            engineHandler = _engineFactory.Create(isWhite, gameState.PowerCap, gameState.PowerCapColor, gameState.IsGpu);
+            _logger.LogInformation("LimitMode: {mode}, TimePerMove: {tpm}, NodesPerMove: {npm}", gameState.LimitMode, gameState.TimePerMove, gameState.NodesPerMove);
+            engineHandler = _engineFactory.Create(isWhite, gameState);
             if (isWhite)
             {
                 var submitMove = engineHandler.MakeMove(new MoveMadeModel(gameState));

@@ -9,8 +9,12 @@ public class GameStateModel
     public long BlackTimeLeft { get; set; } // MS
     public string Engine { get; set; }
     public int PowerCap { get; set; } // POWER CAP IS PERCENTAGE VALUE POWER = (MAX WATTS - MIN WATTS) * (POWER CAP / 100)) + MIN WATTS
-    public long TimeControl { get; set; } // MS
-    public long TimeIncrement { get; set; } // MS
+    public string LimitMode { get; set; } = LimitModes.TimeControl;
+    public long TimeControl { get; set; } // MS, 0 when the mode has no clock
+    public long TimeIncrement { get; set; } // MS, 0 when the mode has no clock
+    public int? TimePerMove { get; set; } // MS
+    public long? NodesPerMove { get; set; }
+    public bool UsesClock => LimitModes.UsesClock(LimitMode);
     public string InitialMoves { get; set; }
     public string PowerCapColor { get; set; }
     public string WhitePlayer { get; set; }

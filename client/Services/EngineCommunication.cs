@@ -13,10 +13,25 @@ public class EngineCommunication : IDisposable
     private List<int> _npsHistory = [];
     private PowerLimitState _powerState;
     private EnergyMeasurementService _energyMeasurementService;
-    
+    // the limit is fixed for the whole game, so it is taken once from GameStarted and not from every MoveMade
+    private readonly string _limitMode;
+    private readonly int? _timePerMove;
+    private readonly long? _nodesPerMove;
 
-    public EngineCommunication(bool isWhite, int powerCapPercent, string powerCapColor, PowerLimitState powerState, bool isGpu, EnergyMeasurementService energyMeasurementService)
+
+    public EngineCommunication(bool isWhite, NewGameModel game, PowerLimitState powerState, EnergyMeasurementService energyMeasurementService)
     {
+        // checked before the engine process is started, so a bad game doesn't leave a process behind
+        // time_control is not range-checked here: the server validates it and the client must keep accepting what an old server sends
+        _limitMode = LimitModes.Normalize(game.LimitMode);
+        if (_limitMode != LimitModes.TimeControl &&
+            !LimitModes.HasValidLimits(_limitMode, game.TimeControl, game.TimeIncrement, game.TimePerMove, game.NodesPerMove))
+            throw new ArgumentException($"Missing or invalid limit for mode '{_limitMode}' (game {game.GameId}).", nameof(game));
+        _timePerMove = game.TimePerMove;
+        _nodesPerMove = game.NodesPerMove;
+        var powerCapPercent = game.PowerCap;
+        var powerCapColor = game.PowerCapColor;
+        var isGpu = game.IsGpu;
         _energyMeasurementService = energyMeasurementService;
         _powerState = powerState;
         _powerState.isGpu = isGpu;
@@ -43,8 +58,7 @@ public class EngineCommunication : IDisposable
         string depth = "";
         string nodes = "";
         string score = "";
-        var moveCommand =
-            $"go wtime {moveMade.WhiteTimeLeft} btime {moveMade.BlackTimeLeft} winc {moveMade.Increment} binc {moveMade.Increment}";
+        var moveCommand = BuildGoCommand(_limitMode, _timePerMove, _nodesPerMove, moveMade);
         if (_powerState.isGpu)
         {
             _energyMeasurementService.StartGpuPowerMeasurement();
@@ -106,6 +120,17 @@ public class EngineCommunication : IDisposable
         }
     }
     
+    // clocks in moveMade are only used (and only meaningful) in time_control mode
+    public static string BuildGoCommand(string limitMode, int? timePerMove, long? nodesPerMove, MoveMadeModel moveMade)
+        => limitMode switch
+        {
+            LimitModes.TimeControl =>
+                $"go wtime {moveMade.WhiteTimeLeft} btime {moveMade.BlackTimeLeft} winc {moveMade.Increment} binc {moveMade.Increment}",
+            LimitModes.TimePerMove => $"go movetime {timePerMove}",
+            LimitModes.NodesPerMove => $"go nodes {nodesPerMove}",
+            _ => throw new ArgumentException($"Unknown limit mode: '{limitMode}'", nameof(limitMode))
+        };
+
     private void SetupEngine(bool isWhite, int powerCapPercent, string powerCapColor)
     {
         Input.WriteLine("uci");
