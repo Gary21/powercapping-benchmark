@@ -8,7 +8,8 @@ public static class ScheduleRequestValidator
         "Provide exactly one limit: (timeControl and timeIncrement) OR timePerMove OR nodesPerMove.";
 
     // Returns the limit mode inferred from the provided parameters, or an error message when the request is invalid.
-    public static (string? Error, string? Mode) Validate(int? timeControl, int? timeIncrement, int? timePerMove, long? nodesPerMove)
+    // powerCapPercent is only checked in nodes_per_move, where it scales the node budget; in the other modes it stays a hardware cap as before.
+    public static (string? Error, string? Mode) Validate(int? timeControl, int? timeIncrement, int? timePerMove, long? nodesPerMove, int powerCapPercent)
     {
         if (timeControl.HasValue != timeIncrement.HasValue)
             return ($"timeControl and timeIncrement must be provided together. {AllowedCombinations}", null);
@@ -39,8 +40,10 @@ public static class ScheduleRequestValidator
                 ? (null, LimitModes.TimePerMove)
                 : ("timePerMove must be greater than 0.", null);
 
-        return nodesPerMove > 0
-            ? (null, LimitModes.NodesPerMove)
-            : ("nodesPerMove must be greater than 0.", null);
+        if (nodesPerMove <= 0)
+            return ("nodesPerMove must be greater than 0.", null);
+        if (!LimitModes.IsValidNodesPowerCap(powerCapPercent))
+            return ("powerCapPercent must be between 1 and 100 in nodes_per_move mode (it scales the node budget of the capped side).", null);
+        return (null, LimitModes.NodesPerMove);
     }
 }

@@ -4,7 +4,7 @@ public class FinishedGameModel
 {
     public string GameId { get;set; }
     public string Engine { get; set; }
-    public int PowerCap { get; set; }
+    public int PowerCap { get; set; } // hardware power cap percent; in nodes_per_move the percent of NodesPerMove given to the PowerCapColor side: MAX(1, ROUND(NodesPerMove * PowerCap / 100.0))
     public string LimitMode { get; set; } = LimitModes.TimeControl;
     public long? TimeControl { get; set; }
     public long? TimeIncrement { get; set; }

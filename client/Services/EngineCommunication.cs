@@ -17,18 +17,23 @@ public class EngineCommunication : IDisposable
     private readonly string _limitMode;
     private readonly int? _timePerMove;
     private readonly long? _nodesPerMove;
+    private readonly PowerLimitEnforcer _enforcer;
 
 
-    public EngineCommunication(bool isWhite, NewGameModel game, PowerLimitState powerState, EnergyMeasurementService energyMeasurementService)
+    public EngineCommunication(bool isWhite, NewGameModel game, PowerLimitState powerState, EnergyMeasurementService energyMeasurementService, PowerLimitEnforcer enforcer)
     {
+        _enforcer = enforcer;
         // checked before the engine process is started, so a bad game doesn't leave a process behind
         // time_control is not range-checked here: the server validates it and the client must keep accepting what an old server sends
         _limitMode = LimitModes.Normalize(game.LimitMode);
         if (_limitMode != LimitModes.TimeControl &&
-            !LimitModes.HasValidLimits(_limitMode, game.TimeControl, game.TimeIncrement, game.TimePerMove, game.NodesPerMove))
+            !LimitModes.HasValidLimits(_limitMode, game.TimeControl, game.TimeIncrement, game.TimePerMove, game.NodesPerMove, game.PowerCap))
             throw new ArgumentException($"Missing or invalid limit for mode '{_limitMode}' (game {game.GameId}).", nameof(game));
         _timePerMove = game.TimePerMove;
-        _nodesPerMove = game.NodesPerMove;
+        // in nodes_per_move this side's own budget: powerCapPercent scales it for the capped side instead of capping the hardware
+        _nodesPerMove = ResolveNodesPerMove(isWhite, game);
+        if (_limitMode == LimitModes.NodesPerMove)
+            Console.WriteLine($"[Engine]: Nodes per move: {_nodesPerMove} (base {game.NodesPerMove}, cap {game.PowerCap}%, capped side: {LimitModes.IsCappedSide(isWhite, game.PowerCapColor)})");
         var powerCapPercent = game.PowerCap;
         var powerCapColor = game.PowerCapColor;
         var isGpu = game.IsGpu;
@@ -131,21 +136,53 @@ public class EngineCommunication : IDisposable
             _ => throw new ArgumentException($"Unknown limit mode: '{limitMode}'", nameof(limitMode))
         };
 
+    // Node budget of this side. Only nodes_per_move scales it; the other modes pass the configured value through.
+    public static long? ResolveNodesPerMove(bool isWhite, NewGameModel game)
+        => LimitModes.Normalize(game.LimitMode) == LimitModes.NodesPerMove
+            ? LimitModes.EffectiveNodesPerMove(game.NodesPerMove!.Value, game.PowerCap, LimitModes.IsCappedSide(isWhite, game.PowerCapColor))
+            : game.NodesPerMove;
+
+    // Hardware power limit (percent) this side must run at, or null to leave it alone.
+    // nodes_per_move: both sides run at full power (the cap is expressed in nodes). Other modes: the capped side gets the cap, the other side 100%.
+    public static long? ResolveTargetLimitPercent(string limitMode, bool isWhite, int powerCapPercent, string? powerCapColor)
+    {
+        if (limitMode == LimitModes.NodesPerMove)
+            return 100;
+        if (LimitModes.IsCappedSide(isWhite, powerCapColor))
+            return powerCapPercent;
+        if (powerCapColor is "white" or "black")
+            return 100;
+        return null;
+    }
+
+    private void ApplyLimitNow()
+    {
+        try
+        {
+            // bounded wait: a hung nvidia-smi holds the enforcer's gate and must not block the start of the game forever
+            if (!_enforcer.EnforceAsync(CancellationToken.None).Wait(TimeSpan.FromSeconds(10)))
+                Console.WriteLine("[Engine]: Timed out applying the full power limit, continuing; the monitor retries every 10 s.");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"[Engine]: Could not apply the full power limit, continuing: {e.GetBaseException().Message}");
+        }
+    }
+
     private void SetupEngine(bool isWhite, int powerCapPercent, string powerCapColor)
     {
         Input.WriteLine("uci");
         while (Output.ReadLine() != "uciok") { }
-        if ((isWhite && powerCapColor == "white") || (!isWhite && powerCapColor == "black"))
+        var targetLimit = ResolveTargetLimitPercent(_limitMode, isWhite, powerCapPercent, powerCapColor);
+        if (targetLimit.HasValue)
         {
-            _powerState.TargetLimitPercent = powerCapPercent;
-            Thread.Sleep(100);
+            _powerState.TargetLimitPercent = targetLimit.Value;
+            if (_limitMode == LimitModes.NodesPerMove)
+                ApplyLimitNow(); // the previous game may have left the hardware capped and the first move starts right away
+            else
+                Thread.Sleep(100);
         }
-        if ((!isWhite && powerCapColor == "white") || (isWhite && powerCapColor == "black"))
-        {
-            _powerState.TargetLimitPercent = 100;
-            Thread.Sleep(100);
-        }
-        
+
         if (!_powerState.isGpu)
         {
             Input.WriteLine("setoption name Clear Hash");

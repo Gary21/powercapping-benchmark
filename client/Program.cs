@@ -5,6 +5,7 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddHostedService<PowerLimitMonitorService>();
 builder.Services.AddSingleton<PowerLimitState>();
+builder.Services.AddSingleton<PowerLimitEnforcer>();
 builder.Services.AddSingleton<IEngineCommunicationFactory, EngineCommunicationFactory>();
 builder.Services.AddSingleton<EnergyMeasurementService>();
 

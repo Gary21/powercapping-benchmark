@@ -37,9 +37,9 @@ public class GameSchedulerService(DatabaseHandler dbHandler, GameService gameSer
     // A row with an unknown mode or a missing/non-positive limit would start a broken game (or throw in the loop), so it is skipped
     private static bool IsPlayable(GamesScheduledModel row)
     {
-        var playable = LimitModes.HasValidLimits(row.LimitMode, row.TimeControl, row.TimeIncrement, row.TimePerMove, row.NodesPerMove);
+        var playable = LimitModes.HasValidLimits(row.LimitMode, row.TimeControl, row.TimeIncrement, row.TimePerMove, row.NodesPerMove, row.PowerCap);
         if (!playable)
-            Console.WriteLine($"Skipping scheduled games {row.Id}: invalid limit settings (mode '{row.LimitMode}', TC {row.TimeControl}, TI {row.TimeIncrement}, TPM {row.TimePerMove}, NPM {row.NodesPerMove}).");
+            Console.WriteLine($"Skipping scheduled games {row.Id}: invalid limit settings (mode '{row.LimitMode}', TC {row.TimeControl}, TI {row.TimeIncrement}, TPM {row.TimePerMove}, NPM {row.NodesPerMove}, PC {row.PowerCap}).");
         return playable;
     }
 

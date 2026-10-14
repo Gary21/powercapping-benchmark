@@ -18,7 +18,7 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
             // throws on an unknown mode before any player is taken; from here on the game state always holds a valid mode
             var limitMode = LimitModes.Normalize(newGame.LimitMode);
             newGame.LimitMode = limitMode;
-            if (!LimitModes.HasValidLimits(limitMode, newGame.TimeControl, newGame.TimeIncrement, newGame.TimePerMove, newGame.NodesPerMove))
+            if (!LimitModes.HasValidLimits(limitMode, newGame.TimeControl, newGame.TimeIncrement, newGame.TimePerMove, newGame.NodesPerMove, newGame.PowerCap))
                 throw new ArgumentException($"Missing or invalid limit for mode '{limitMode}' (game {newGame.GameId}).", nameof(newGame));
             var usesClock = LimitModes.UsesClock(limitMode);
             var (player1, player2) = await FindTwoPlayers();
@@ -52,7 +52,7 @@ public class GameService(IHubContext<SignalRService, IChessClient> hub, ClientSe
             Console.WriteLine(limitMode switch
             {
                 LimitModes.TimePerMove => $"[Hub] Limit: {currentState.TimePerMove} ms per move (no clock).",
-                LimitModes.NodesPerMove => $"[Hub] Limit: {currentState.NodesPerMove} nodes per move (no clock).",
+                LimitModes.NodesPerMove => $"[Hub] Limit: {currentState.NodesPerMove} nodes per move, {currentState.PowerCapColor} side (cap {currentState.PowerCap}%) gets {LimitModes.EffectiveNodesPerMove(currentState.NodesPerMove!.Value, currentState.PowerCap, true)} (no clock, no hardware cap).",
                 _ => $"[Hub] Time left - White: {currentState.WhiteTimeLeft} ms, Black: {currentState.BlackTimeLeft} ms."
             });
             Console.WriteLine($"[Hub] Current position: \n{currentState.Board.ToAscii()}\n");
