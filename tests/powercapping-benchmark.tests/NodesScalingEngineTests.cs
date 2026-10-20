@@ -58,7 +58,7 @@ public class NodesScalingEngineTests
     // an unknown colour in nodes mode still means full power (nothing is capped on the hardware there)
     [InlineData(LimitModes.NodesPerMove, true, 20, "purple", 100L)]
     [InlineData(LimitModes.NodesPerMove, false, 20, "purple", 100L)]
-    public void Target_hardware_limit_per_side(string mode, bool isWhite, int percent, string capColor, long expected)
+    public void Target_hardware_limit_per_side(string mode, bool isWhite, double percent, string capColor, long expected)
         => Assert.Equal(expected, EngineCommunication.ResolveTargetLimitPercent(mode, isWhite, percent, capColor));
 
     [Theory]

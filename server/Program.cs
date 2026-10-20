@@ -38,7 +38,7 @@ app.MapGet("/ping", async (GameService gameService) =>
     await gameService.Ping("awesome-ping-text:)");
     return Results.Ok(new { ok = true });
 });
-app.MapGet("/scheduleGames", IResult (DatabaseHandler dbHandler, int? timeControl, int? timeIncrement, int? timePerMove, long? nodesPerMove, int powerCapPercent, int noOfGamesPerSide, bool isGpu, string initialMoves) =>
+app.MapGet("/scheduleGames", IResult (DatabaseHandler dbHandler, int? timeControl, int? timeIncrement, int? timePerMove, long? nodesPerMove, double powerCapPercent, int noOfGamesPerSide, bool isGpu, string initialMoves) =>
 {
     var (error, limitMode) = ScheduleRequestValidator.Validate(timeControl, timeIncrement, timePerMove, nodesPerMove, powerCapPercent);
     if (error != null)

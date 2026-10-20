@@ -107,4 +107,36 @@ public class DatabaseHandlerTests : IDisposable
         using var again = new DatabaseHandler(path);
         Assert.Equal(2, again.GetScheduledGames().Count);
     }
+
+    // the PowerCap column is INTEGER in databases created before the field became a double; SQLite keeps a REAL value in it as is
+    [Fact]
+    public void Fractional_power_cap_round_trips_through_an_old_integer_column()
+    {
+        var path = NewDbPath();
+        using (var old = new SQLiteConnection(path))
+        {
+            old.CreateTable<Old.FinishedGameModel>();
+            old.CreateTable<Old.GamesScheduledModel>();
+            old.Insert(new Old.GamesScheduledModel { Id = "s1", TimeControl = 60000, TimeIncrement = 1000, PowerCap = 80, NumberOfGamesPerSide = 1, InitialMoves = "e2e4 e7e5" });
+        }
+
+        using (var db = new DatabaseHandler(path))
+        {
+            var half = Row("s2", LimitModes.NodesPerMove, npm: 1_000_000L);
+            half.PowerCap = 0.5;
+            db.ScheduleGames(half);
+            var sameAgain = Row("s3", LimitModes.NodesPerMove, npm: 1_000_000L);
+            sameAgain.PowerCap = 0.5;
+            db.ScheduleGames(sameAgain); // identical settings are merged, so fractional caps compare equal
+            db.InsertResult(new FinishedGameModel { GameId = "g1", LimitMode = LimitModes.NodesPerMove, NodesPerMove = 1_000_000L, PowerCap = 0.25, Result = "d" });
+        }
+
+        using var check = new DatabaseHandler(path);
+        var rows = check.GetScheduledGames();
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(80, rows.Single(r => r.Id == "s1").PowerCap); // an integer written by the old schema still reads back
+        var merged = rows.Single(r => r.Id == "s2");
+        Assert.Equal(0.5, merged.PowerCap);
+        Assert.Equal(2, merged.NumberOfGamesPerSide);
+    }
 }

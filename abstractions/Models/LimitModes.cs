@@ -15,7 +15,7 @@ public static class LimitModes
         : throw new ArgumentException($"Unknown limit mode: '{mode}'", nameof(mode));
 
     // in nodes_per_move the power cap percent is not a hardware limit but the share of the node budget given to the capped side
-    public static bool IsValidNodesPowerCap(int powerCapPercent) => powerCapPercent is >= 1 and <= 100;
+    public static bool IsValidNodesPowerCap(double powerCapPercent) => powerCapPercent is > 0 and <= 100;
 
     // the side whose colour is PowerCapColor (case-sensitive, like the hardware cap logic)
     public static bool IsCappedSide(bool isWhite, string? powerCapColor)
@@ -24,7 +24,7 @@ public static class LimitModes
     // Nodes per move for one side in nodes_per_move: the capped side gets round(nodes * percent / 100), at least 1; the other side the full budget.
     // decimal: exact and no overflow for any long (long * int would overflow, double loses precision above 2^53).
     // AwayFromZero: 2.5 -> 3 like ROUND() in SQLite, so the same value can be reproduced from NodesPerMove * PowerCap / 100.
-    public static long EffectiveNodesPerMove(long nodesPerMove, int powerCapPercent, bool isCappedSide)
+    public static long EffectiveNodesPerMove(long nodesPerMove, double powerCapPercent, bool isCappedSide)
     {
         if (nodesPerMove <= 0) throw new ArgumentOutOfRangeException(nameof(nodesPerMove));
         if (!IsValidNodesPowerCap(powerCapPercent)) throw new ArgumentOutOfRangeException(nameof(powerCapPercent));
@@ -34,7 +34,7 @@ public static class LimitModes
     }
 
     // the mode is known and the limit it needs is present and in range; used where a game is about to start
-    public static bool HasValidLimits(string? mode, long? timeControl, long? timeIncrement, long? timePerMove, long? nodesPerMove, int powerCapPercent)
+    public static bool HasValidLimits(string? mode, long? timeControl, long? timeIncrement, long? timePerMove, long? nodesPerMove, double powerCapPercent)
         => IsValid(mode) && Normalize(mode) switch
         {
             TimeControl => timeControl > 0 && timeIncrement >= 0,

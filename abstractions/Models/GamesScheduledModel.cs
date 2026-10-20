@@ -11,7 +11,7 @@ public class GamesScheduledModel
     public int? TimeIncrement { get; set; }
     public int? TimePerMove { get; set; } // MS
     public long? NodesPerMove { get; set; }
-    public int PowerCap { get; set; } // hardware power cap percent; in nodes_per_move the percent of NodesPerMove given to the capped side (1-100)
+    public double PowerCap { get; set; } // hardware power cap percent; in nodes_per_move the percent of NodesPerMove given to the capped side (>0 to 100, fractions allowed)
     public int NumberOfGamesPerSide { get; set; }
     public bool IsGpu { get; set; }
     public string InitialMoves { get; set; } = "";

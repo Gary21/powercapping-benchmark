@@ -71,7 +71,10 @@ public class LimitModesTests
     [InlineData(149L, 1, true, 1L)]                  // 1.49 -> 1
     [InlineData(150L, 1, true, 2L)]                  // 1.5 -> 2
     [InlineData(1000L, 1, true, 10L)]
-    public void EffectiveNodesPerMove_scales_only_the_capped_side(long nodes, int percent, bool capped, long expected)
+    [InlineData(1_000_000L, 0.5, true, 5_000L)]     // below 1%
+    [InlineData(1_000_000L, 0.01, true, 100L)]
+    [InlineData(1000L, 0.01, true, 1L)]             // 0.1 -> still at least 1
+    public void EffectiveNodesPerMove_scales_only_the_capped_side(long nodes, double percent, bool capped, long expected)
         => Assert.Equal(expected, LimitModes.EffectiveNodesPerMove(nodes, percent, capped));
 
     [Fact]
@@ -87,11 +90,12 @@ public class LimitModesTests
 
     [Theory]
     [InlineData(1000L, 0)]
+    [InlineData(1000L, double.NaN)]
     [InlineData(1000L, 101)]
     [InlineData(1000L, -1)]
     [InlineData(0L, 50)]
     [InlineData(-5L, 50)]
-    public void EffectiveNodesPerMove_rejects_out_of_range_input(long nodes, int percent)
+    public void EffectiveNodesPerMove_rejects_out_of_range_input(long nodes, double percent)
         => Assert.Throws<ArgumentOutOfRangeException>(() => LimitModes.EffectiveNodesPerMove(nodes, percent, true));
 }
 

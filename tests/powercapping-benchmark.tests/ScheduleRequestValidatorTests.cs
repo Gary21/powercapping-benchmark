@@ -7,7 +7,7 @@ namespace powercapping_benchmark.tests;
 public class ScheduleRequestValidatorTests
 {
     // timeControl, timeIncrement, timePerMove, nodesPerMove, powerCapPercent, expected mode (null => invalid request)
-    public static TheoryData<int?, int?, int?, long?, int, string?> Cases => new()
+    public static TheoryData<int?, int?, int?, long?, double, string?> Cases => new()
     {
         { 60000, 1000, null, null, 50, LimitModes.TimeControl },
         { 60000, 0, null, null, 50, LimitModes.TimeControl },
@@ -30,9 +30,12 @@ public class ScheduleRequestValidatorTests
         { null, null, null, 0L, 50, null },          // nodesPerMove must be > 0
         { null, null, null, -1L, 50, null },
 
-        // powerCapPercent scales the node budget in nodes_per_move, so it must be 1..100 there
+        // powerCapPercent scales the node budget in nodes_per_move, so it must be in (0, 100] there (fractions allowed)
         { null, null, null, 1000L, 1, LimitModes.NodesPerMove },
         { null, null, null, 1000L, 100, LimitModes.NodesPerMove },
+        { null, null, null, 1000L, 0.5, LimitModes.NodesPerMove },
+        { null, null, null, 1000L, 0.001, LimitModes.NodesPerMove },
+        { null, null, null, 1000L, double.NaN, null },
         { null, null, null, 1000L, 0, null },
         { null, null, null, 1000L, -1, null },
         { null, null, null, 1000L, 101, null },
@@ -48,7 +51,7 @@ public class ScheduleRequestValidatorTests
 
     [Theory]
     [MemberData(nameof(Cases))]
-    public void Validate_infers_the_mode_or_rejects(int? timeControl, int? timeIncrement, int? timePerMove, long? nodesPerMove, int powerCapPercent, string? expectedMode)
+    public void Validate_infers_the_mode_or_rejects(int? timeControl, int? timeIncrement, int? timePerMove, long? nodesPerMove, double powerCapPercent, string? expectedMode)
     {
         var (error, mode) = ScheduleRequestValidator.Validate(timeControl, timeIncrement, timePerMove, nodesPerMove, powerCapPercent);
 

@@ -144,12 +144,12 @@ public class EngineCommunication : IDisposable
 
     // Hardware power limit (percent) this side must run at, or null to leave it alone.
     // nodes_per_move: both sides run at full power (the cap is expressed in nodes). Other modes: the capped side gets the cap, the other side 100%.
-    public static long? ResolveTargetLimitPercent(string limitMode, bool isWhite, int powerCapPercent, string? powerCapColor)
+    public static long? ResolveTargetLimitPercent(string limitMode, bool isWhite, double powerCapPercent, string? powerCapColor)
     {
         if (limitMode == LimitModes.NodesPerMove)
             return 100;
         if (LimitModes.IsCappedSide(isWhite, powerCapColor))
-            return powerCapPercent;
+            return (long)Math.Round(powerCapPercent, MidpointRounding.AwayFromZero); // the hardware limit is whole percent
         if (powerCapColor is "white" or "black")
             return 100;
         return null;
@@ -169,7 +169,7 @@ public class EngineCommunication : IDisposable
         }
     }
 
-    private void SetupEngine(bool isWhite, int powerCapPercent, string powerCapColor)
+    private void SetupEngine(bool isWhite, double powerCapPercent, string powerCapColor)
     {
         Input.WriteLine("uci");
         while (Output.ReadLine() != "uciok") { }
